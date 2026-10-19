@@ -5,7 +5,15 @@ import { usePlanner } from "@/lib/store";
 const LISTS = ["tasks", "spans", "goals", "contacts", "ideas", "books", "boards", "labels"] as const;
 const SENT_KEY = "poryadok-sync-sent";
 const CURSOR_KEY = "poryadok-sync-cursor";
+const USER_KEY = "poryadok-sync-user";
 
+type Profile = {
+  mission: string;
+  xp: number;
+  scores: Record<string, number>;
+  timeCats: string[];
+  projects: string[];
+};
 type Sent = Record<string, string>;
 type Status = "local" | "offline" | "sync" | "ok";
 
@@ -135,6 +143,56 @@ function applyRecords(records: SyncChange[]) {
   });
 }
 
+function replaceAll(records: SyncChange[]) {
+  const sent: Sent = {};
+  const lists = Object.fromEntries(LISTS.map((name) => [name, [] as { id: string }[]])) as Record<
+    (typeof LISTS)[number],
+    { id: string }[]
+  >;
+  let profile: Profile | null = null;
+  for (const record of records) {
+    const key = `${record.collection}:${record.id}`;
+    if (record.deleted) {
+      sent[key] = "deleted";
+      continue;
+    }
+    if (record.collection === "meta" && record.id === "profile") {
+      profile = record.payload as Profile;
+      sent[key] = JSON.stringify(record.payload);
+      continue;
+    }
+    if (!LISTS.includes(record.collection as (typeof LISTS)[number])) continue;
+    const collection = record.collection as (typeof LISTS)[number];
+    lists[collection].push(record.payload as { id: string });
+    sent[key] = JSON.stringify(record.payload);
+  }
+  saveSent(sent);
+  usePlanner.setState({
+    ...lists,
+    ...(profile
+      ? {
+          mission: profile.mission,
+          xp: profile.xp,
+          scores: profile.scores ?? {},
+          timeCats: profile.timeCats ?? usePlanner.getState().timeCats,
+          projects: profile.projects ?? usePlanner.getState().projects,
+        }
+      : {}),
+  });
+}
+
+async function currentUserId() {
+  const { authClient, authEnabled } = await import("@/lib/auth/client");
+  if (!authEnabled) return null;
+  const session = await authClient.getSession();
+  return session.data?.user?.id ?? null;
+}
+
+function rememberCursor(records: SyncChange[], since: number) {
+  const newest = records.reduce((max, row) => Math.max(max, row.updatedAt), since);
+  localStorage.setItem(CURSOR_KEY, String(newest || Date.now()));
+}
+
 export async function syncNow() {
   if (typeof window === "undefined" || running) return;
   if (!navigator.onLine) {
@@ -144,14 +202,34 @@ export async function syncNow() {
   running = true;
   emit("sync");
   try {
+    const userId = await currentUserId();
+    if (!userId) {
+      emit("local");
+      return;
+    }
+    if (localStorage.getItem(USER_KEY) !== userId) {
+      localStorage.removeItem(SENT_KEY);
+      localStorage.removeItem(CURSOR_KEY);
+      localStorage.setItem(USER_KEY, userId);
+    }
+    const first = localStorage.getItem(CURSOR_KEY) == null;
+    if (first) {
+      const pulled = await pushPull({ data: { since: 0, changes: [] } });
+      if (pulled.records.length) {
+        replaceAll(pulled.records as SyncChange[]);
+        rememberCursor(pulled.records as SyncChange[], 0);
+        emit("ok");
+        return;
+      }
+    }
     const sent = loadSent();
     const changes = changesSince(sent, usePlanner.getState());
     const since = Number(localStorage.getItem(CURSOR_KEY) || 0);
     const result = await pushPull({ data: { since, changes } });
     saveSent(sent);
     applyRecords(result.records as SyncChange[]);
-    const newest = result.records.reduce((max, row) => Math.max(max, row.updatedAt), since);
-    localStorage.setItem(CURSOR_KEY, String(newest));
+    rememberCursor(result.records as SyncChange[], since);
+    emit("ok");
   } catch {
     emit(navigator.onLine ? "local" : "offline", "нет связи с сервером");
   } finally {
@@ -168,6 +246,7 @@ export function startSync() {
   });
   window.addEventListener("online", () => void syncNow());
   window.addEventListener("offline", () => emit("offline"));
+  window.addEventListener("focus", () => void syncNow());
   if (!navigator.onLine) emit("offline");
   void syncNow();
 }
