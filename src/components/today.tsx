@@ -1,9 +1,10 @@
 import { Link } from "@tanstack/react-router";
 import { Flame, Zap } from "lucide-react";
 import { useEffect, useState } from "react";
+import { ScorePips } from "@/components/score-pips";
 import { dayKey, fmtHm, fmtSpan, formatDay } from "@/lib/dates";
 import { playStart, playTap } from "@/lib/sound";
-import { levelInfo, spanSeconds, streakCount, usePlanner, type Pomo, type Task } from "@/lib/store";
+import { dayScore, levelInfo, spanSeconds, streakCount, usePlanner, type Pomo, type Task } from "@/lib/store";
 
 export function Today() {
   const tasks = usePlanner((s) => s.tasks);
@@ -13,6 +14,7 @@ export function Today() {
   const completeTask = usePlanner((s) => s.completeTask);
   const startSpan = usePlanner((s) => s.startSpan);
   const stopSpan = usePlanner((s) => s.stopSpan);
+  const updateSpan = usePlanner((s) => s.updateSpan);
   const startPomo = usePlanner((s) => s.startPomo);
   const pausePomo = usePlanner((s) => s.pausePomo);
   const stopPomo = usePlanner((s) => s.stopPomo);
@@ -26,6 +28,9 @@ export function Today() {
   }, []);
 
   const open = spans.find((span) => span.day === today && !span.end);
+  const finished = spans.filter((span) => span.day === today && span.end).sort((a, b) => b.start.localeCompare(a.start));
+  const unrated = finished.filter((span) => !span.score);
+  const score = dayScore(spans, today);
   const seconds = spans.filter((span) => span.day === today).reduce((sum, span) => sum + spanSeconds(span), 0);
   const done = tasks.filter((task) => task.completed.slice(0, 10) === today).length;
   const pomos = tasks.reduce((sum, task) => sum + (task.completed.slice(0, 10) === today ? task.pomodoros : 0), 0);
@@ -94,7 +99,7 @@ export function Today() {
           <p className="text-mist">Выбери, чем занят. Следующая категория сама закроет эту.</p>
         )}
         <div className="mt-4 flex flex-wrap gap-2">
-          {timeCats.slice(0, 12).map((name) => (
+          {timeCats.map((name) => (
             <button
               key={name}
               type="button"
@@ -107,10 +112,23 @@ export function Today() {
               {name}
             </button>
           ))}
-          <Link to="/timing" className="rounded-full px-3 py-2 text-sm text-gold">
-            Все категории
-          </Link>
         </div>
+        {unrated.length > 0 ? (
+          <div className="mt-4 space-y-3 border-t border-line pt-4">
+            <p className="text-sm text-mist">Как прошёл этап</p>
+            {unrated.map((span) => (
+              <div key={span.id}>
+                <p className="mb-2 text-sm">{span.category}</p>
+                <ScorePips value={span.score} onPick={(value) => updateSpan(span.id, { score: value })} />
+              </div>
+            ))}
+          </div>
+        ) : null}
+        <p className="mt-4 text-sm text-mist">
+          Оценка дня{" "}
+          <span className="font-display text-2xl text-cream">{score ?? "—"}</span>
+          {score != null ? ` из ${finished.filter((span) => span.score).length} этапов` : " — оцени закрытые этапы"}
+        </p>
       </section>
 
       <Pomodoro

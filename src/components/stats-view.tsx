@@ -1,11 +1,10 @@
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { addDays, dayKey, fmtHm, shortDay } from "@/lib/dates";
-import { levelInfo, spanSeconds, streakCount, usePlanner } from "@/lib/store";
+import { dayScore, levelInfo, spanSeconds, streakCount, usePlanner } from "@/lib/store";
 
 export function StatsView() {
   const spans = usePlanner((s) => s.spans);
   const tasks = usePlanner((s) => s.tasks);
-  const scores = usePlanner((s) => s.scores);
   const xp = usePlanner((s) => s.xp);
   const level = levelInfo(xp);
   const today = dayKey();
@@ -24,7 +23,7 @@ export function StatsView() {
   const max = todayRows[0]?.[1] ?? 1;
 
   const heat = Array.from({ length: 84 }, (_, index) => addDays(today, index - 83));
-  const rated = Object.values(scores);
+  const rated = heat.map((day) => dayScore(spans, day)).filter((value): value is number => value != null);
   const avg = rated.length ? (rated.reduce((sum, value) => sum + value, 0) / rated.length).toFixed(1) : "—";
 
   return (
@@ -36,7 +35,7 @@ export function StatsView() {
       <section className="grid gap-3 sm:grid-cols-3">
         <Stat label="Уровень" value={String(level.level)} hint={`${xp} XP`} />
         <Stat label="Серия" value={String(streakCount(tasks, spans))} hint="дней" />
-        <Stat label="Средняя оценка" value={String(avg)} hint="по отмеченным дням" />
+        <Stat label="Средняя оценка" value={String(avg)} hint="из оценок этапов" />
       </section>
       <section className="rounded-card border border-line bg-panel p-4">
         <h2 className="mb-3 font-display text-2xl">14 дней, часы</h2>

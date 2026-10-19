@@ -1,18 +1,18 @@
 import { useEffect, useState } from "react";
 import { Field, inputClass, Modal } from "@/components/modal";
+import { ScorePips } from "@/components/score-pips";
 import { addDays, clock, dayKey, fmtHm, fmtSpan, formatDay } from "@/lib/dates";
 import { playStart, playStop, playTap } from "@/lib/sound";
-import { spanSeconds, usePlanner } from "@/lib/store";
+import { dayScore, spanSeconds, usePlanner } from "@/lib/store";
 
 export function TimingView() {
   const timeCats = usePlanner((s) => s.timeCats);
   const spans = usePlanner((s) => s.spans);
-  const scores = usePlanner((s) => s.scores);
   const startSpan = usePlanner((s) => s.startSpan);
   const stopSpan = usePlanner((s) => s.stopSpan);
   const deleteSpan = usePlanner((s) => s.deleteSpan);
+  const updateSpan = usePlanner((s) => s.updateSpan);
   const addManualSpan = usePlanner((s) => s.addManualSpan);
-  const setScore = usePlanner((s) => s.setScore);
   const [day, setDay] = useState(dayKey());
   const [manual, setManual] = useState(false);
   const [ask, setAsk] = useState<{ category: string; mode: "start" | "stop" } | null>(null);
@@ -29,6 +29,8 @@ export function TimingView() {
   const totals = new Map<string, number>();
   for (const span of daySpans) totals.set(span.category, (totals.get(span.category) ?? 0) + spanSeconds(span));
   const grand = [...totals.values()].reduce((sum, value) => sum + value, 0);
+  const score = dayScore(spans, day);
+  const ratedCount = daySpans.filter((span) => span.end && span.score).length;
 
   function begin(category: string) {
     if (day !== dayKey()) {
@@ -104,15 +106,22 @@ export function TimingView() {
           </div>
           <ul className="space-y-2">
             {daySpans.map((span) => (
-              <li key={span.id} className="flex items-center gap-3 rounded-2xl border border-line bg-panel px-3 py-3">
-                <span className="w-28 text-sm text-mist">
-                  {clock(span.start)} – {span.end ? clock(span.end) : "идёт"}
-                </span>
-                <span className="flex-1">{span.category}</span>
-                <span className="text-gold">{fmtSpan(spanSeconds(span))}</span>
-                <button type="button" className="text-sm text-ember" onClick={() => { playTap(); deleteSpan(span.id); }}>
-                  Удалить
-                </button>
+              <li key={span.id} className="rounded-2xl border border-line bg-panel px-3 py-3">
+                <div className="flex items-center gap-3">
+                  <span className="w-28 text-sm text-mist">
+                    {clock(span.start)} – {span.end ? clock(span.end) : "идёт"}
+                  </span>
+                  <span className="flex-1">{span.category}</span>
+                  <span className="text-gold">{fmtSpan(spanSeconds(span))}</span>
+                  <button type="button" className="text-sm text-ember" onClick={() => { playTap(); deleteSpan(span.id); }}>
+                    Удалить
+                  </button>
+                </div>
+                {span.end ? (
+                  <div className="mt-3">
+                    <ScorePips value={span.score} onPick={(value) => updateSpan(span.id, { score: value })} />
+                  </div>
+                ) : null}
               </li>
             ))}
             {daySpans.length === 0 ? <li className="text-mist">За этот день ещё пусто.</li> : null}
@@ -136,18 +145,11 @@ export function TimingView() {
               ))}
           </ul>
           <p className="mt-4 font-display text-xl">Всего {fmtHm(grand)}</p>
-          <label className="mt-4 block text-sm text-mist">
+          <p className="mt-4 text-sm text-mist">
             Оценка дня
-            <input
-              className="mt-1 w-full accent-gold"
-              type="range"
-              min={1}
-              max={10}
-              value={scores[day] ?? 7}
-              onChange={(event) => setScore(day, Number(event.target.value))}
-            />
-            <span className="font-display text-2xl text-cream">{scores[day] ?? 7}</span>
-          </label>
+            <span className="mt-1 block font-display text-3xl text-cream">{score ?? "—"}</span>
+            {score != null ? `Среднее из ${ratedCount} этапов` : "Поставь оценку каждому закрытому этапу"}
+          </p>
         </aside>
       </div>
       {ask ? (

@@ -30,6 +30,7 @@ export type Span = {
   category: string;
   start: string;
   end: string;
+  score?: number;
 };
 
 export type Goal = { id: string; title: string; content: string };
@@ -105,6 +106,13 @@ export function levelInfo(xp: number) {
     need = 60 + level * 20;
   }
   return { level, into: rest, need };
+}
+
+export function dayScore(spans: Span[], day: string) {
+  const rated = spans.filter((span) => span.day === day && span.end && span.score);
+  if (rated.length === 0) return null;
+  const sum = rated.reduce((total, span) => total + (span.score ?? 0), 0);
+  return Math.round((sum / rated.length) * 10) / 10;
 }
 
 export function spanSeconds(span: Span, now = Date.now()) {
