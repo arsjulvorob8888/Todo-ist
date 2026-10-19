@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: poryadok
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: node .output/server/index.mjs
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: VITE_AUTH_ENABLED
+        value: "true"
+      - key: BETTER_AUTH_SECRET
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: poryadok-db
+          property: connectionString
+      - key: BETTER_AUTH_URL
+        sync: false
+
+databases:
+  - name: poryadok-db
+    plan: free
+    databaseName: poryadok
+    user: poryadok

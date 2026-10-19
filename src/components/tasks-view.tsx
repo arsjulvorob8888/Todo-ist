@@ -1,0 +1,345 @@
+import { useState } from "react";
+import { Field, inputClass, Modal } from "@/components/modal";
+import { playStart } from "@/lib/sound";
+import { usePlanner, type Board, type Mark, type Priority, type Task } from "@/lib/store";
+
+const PRIORITIES: Priority[] = ["Срочно", "Высокий", "Средний", "Низкий"];
+
+export function TasksView() {
+  const tasks = usePlanner((s) => s.tasks);
+  const projects = usePlanner((s) => s.projects);
+  const addTask = usePlanner((s) => s.addTask);
+  const completeTask = usePlanner((s) => s.completeTask);
+  const deleteTask = usePlanner((s) => s.deleteTask);
+  const updateTask = usePlanner((s) => s.updateTask);
+  const boards = usePlanner((s) => s.boards);
+  const labels = usePlanner((s) => s.labels);
+  const addLabel = usePlanner((s) => s.addLabel);
+  const startPomo = usePlanner((s) => s.startPomo);
+  const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<Task | null>(null);
+  const [filter, setFilter] = useState("Все");
+  const [project, setProject] = useState("Все");
+  const [labelId, setLabelId] = useState("Все");
+  const [labelName, setLabelName] = useState("");
+
+  const visible = tasks.filter((task) => {
+    if (filter !== "Все" && task.status !== filter) return false;
+    if (project !== "Все" && task.projectId !== project && task.project !== project) return false;
+    if (labelId !== "Все" && !(task.labelIds ?? []).includes(labelId)) return false;
+    return true;
+  });
+
+  return (
+    <div>
+      <header className="mb-5 flex items-end justify-between gap-3">
+        <div>
+          <p className="text-sm text-mist">Одно действие — одна цель</p>
+          <h1 className="font-display text-4xl">Задачи</h1>
+        </div>
+        <button type="button" onClick={() => setOpen(true)} className="rounded-full bg-gold px-4 py-2 text-ink">
+          Новая
+        </button>
+      </header>
+      <div className="mb-4 flex flex-wrap gap-2">
+        {["Все", "В ожидании", "В процессе", "Выполнено"].map((name) => (
+          <button
+            key={name}
+            type="button"
+            onClick={() => setFilter(name)}
+            className={`rounded-full px-3 py-2 text-sm ${filter === name ? "bg-gold text-ink" : "bg-panel text-mist"}`}
+          >
+            {name}
+          </button>
+        ))}
+        <select className={inputClass + " w-auto"} value={project} onChange={(event) => setProject(event.target.value)}>
+          <option value="Все">Все проекты</option>
+          {boards.map((board) => (
+            <option key={board.id} value={board.id}>
+              {board.name}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setLabelId("Все")}
+          className={`rounded-full px-3 py-1 text-sm ${labelId === "Все" ? "bg-gold text-ink" : "bg-panel text-mist"}`}
+        >
+          Все метки
+        </button>
+        {labels.map((label) => (
+          <button
+            key={label.id}
+            type="button"
+            onClick={() => setLabelId(label.id)}
+            className={`rounded-full px-3 py-1 text-sm ${labelId === label.id ? "text-ink" : "text-cream"}`}
+            style={{ background: labelId === label.id ? label.color : "transparent", border: `1px solid ${label.color}` }}
+          >
+            {label.name}
+          </button>
+        ))}
+        <input
+          className={inputClass + " w-36"}
+          placeholder="Новая метка"
+          value={labelName}
+          onChange={(event) => setLabelName(event.target.value)}
+        />
+        <button
+          type="button"
+          className="rounded-full bg-panel-2 px-3 py-2 text-sm"
+          onClick={() => {
+            addLabel(labelName);
+            setLabelName("");
+          }}
+        >
+          Метка
+        </button>
+      </div>
+      <ul className="space-y-2">
+        {visible.map((task) => (
+          <TaskRow
+            key={task.id}
+            task={task}
+            labels={labels}
+            onDone={() => completeTask(task.id)}
+            onDelete={() => deleteTask(task.id)}
+            onEdit={() => setEditing(task)}
+            onProgress={() => updateTask(task.id, { status: "В процессе" })}
+            onPomo={() => {
+              playStart();
+              startPomo(25, task.id);
+            }}
+          />
+        ))}
+      </ul>
+      {visible.length === 0 ? (
+        <p className="mt-6 text-mist">
+          {tasks.length === 0 ? "Нет задач в этом фильтре." : "В этом фильтре пусто."}
+          {tasks.length > 0 ? (
+            <button
+              type="button"
+              className="ml-3 rounded-full bg-gold px-3 py-1 text-ink"
+              onClick={() => {
+                setFilter("Все");
+                setProject("Все");
+              }}
+            >
+              Показать все ({tasks.length})
+            </button>
+          ) : null}
+        </p>
+      ) : null}
+      {open ? (
+        <TaskForm
+          projects={projects}
+          boards={boards}
+          labels={labels}
+          onClose={() => setOpen(false)}
+          onSave={(task) => {
+            addTask(task);
+            setFilter("Все");
+            setProject("Все");
+          }}
+        />
+      ) : null}
+      {editing ? (
+        <TaskForm
+          projects={projects}
+          boards={boards}
+          labels={labels}
+          initial={editing}
+          onClose={() => setEditing(null)}
+          onSave={(task) => {
+            updateTask(editing.id, task);
+            setEditing(null);
+          }}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function TaskRow({
+  task,
+  labels,
+  onDone,
+  onDelete,
+  onEdit,
+  onProgress,
+  onPomo,
+}: {
+  task: Task;
+  labels: Mark[];
+  onDone: () => void;
+  onDelete: () => void;
+  onEdit: () => void;
+  onProgress: () => void;
+  onPomo: () => void;
+}) {
+  const done = task.status === "Выполнено";
+  return (
+    <li className="flex items-center gap-3 rounded-card border border-line bg-panel px-3 py-3">
+      <button
+        type="button"
+        aria-label={done ? "Вернуть в работу" : "Выполнить"}
+        onClick={onDone}
+        className={`flex size-8 shrink-0 items-center justify-center rounded-full border-2 text-sm font-bold ${done ? "border-gold bg-gold text-ink" : "border-gold"}`}
+      >
+        {done ? "✓" : ""}
+      </button>
+      <div className="min-w-0 flex-1">
+        <p className={done ? "text-mist line-through" : ""}>{task.title}</p>
+        <p className="text-xs text-mist">
+          Поставлена {formatCreated(task.created)} · дедлайн {formatDeadline(task.deadline)} · {task.priority} · {task.status}
+        </p>
+        {(task.labelIds ?? []).length ? (
+          <p className="mt-1 flex flex-wrap gap-1">
+            {labels
+              .filter((label) => (task.labelIds ?? []).includes(label.id))
+              .map((label) => (
+                <span key={label.id} className="rounded-full px-2 py-0.5 text-xs text-ink" style={{ background: label.color }}>
+                  {label.name}
+                </span>
+              ))}
+          </p>
+        ) : null}
+      </div>
+      <button type="button" onClick={onEdit} className="text-sm text-gold">
+        Править
+      </button>
+      {!done ? (
+        <button type="button" onClick={onProgress} className="hidden text-sm text-mist sm:block">
+          В работе
+        </button>
+      ) : null}
+      <button type="button" onClick={onPomo} className="rounded-full bg-gold px-3 py-2 text-sm text-ink">
+        25 мин
+      </button>
+      <button type="button" onClick={onDelete} className="text-sm text-ember">
+        Удалить
+      </button>
+    </li>
+  );
+}
+
+function TaskForm({
+  projects,
+  boards,
+  labels,
+  initial,
+  onClose,
+  onSave,
+}: {
+  projects: string[];
+  boards: Board[];
+  labels: Mark[];
+  initial?: Task;
+  onClose: () => void;
+  onSave: (task: { title: string; project: string; projectId: string; labelIds: string[]; priority: Priority; deadline: string; description: string }) => void;
+}) {
+  const [title, setTitle] = useState(initial?.title ?? "");
+  const [projectId, setProjectId] = useState(initial?.projectId || boards.find((board) => board.name === initial?.project)?.id || boards.find((board) => board.inbox)?.id || "");
+  const [priority, setPriority] = useState<Priority>(initial?.priority ?? "Средний");
+  const [deadline, setDeadline] = useState(initial?.deadline ?? "");
+  const [description, setDescription] = useState(initial?.description ?? "");
+  const [picked, setPicked] = useState<string[]>(initial?.labelIds ?? []);
+  const [error, setError] = useState("");
+  const board = boards.find((item) => item.id === projectId);
+  return (
+    <Modal title={initial ? "Править задачу" : "Новая задача"} onClose={onClose}>
+      <Field label="Текст">
+        <input className={inputClass} value={title} onChange={(event) => setTitle(event.target.value)} />
+      </Field>
+      <Field label="Проект">
+        <select className={inputClass} value={projectId} onChange={(event) => setProjectId(event.target.value)}>
+          {boards.map((item) => (
+            <option key={item.id} value={item.id}>
+              {item.name}
+            </option>
+          ))}
+          {projects
+            .filter((name) => !boards.some((item) => item.name === name))
+            .map((name) => (
+              <option key={name} value={name}>
+                {name}
+              </option>
+            ))}
+        </select>
+      </Field>
+      <Field label="Метки">
+        <div className="flex flex-wrap gap-2">
+          {labels.map((label) => {
+            const on = picked.includes(label.id);
+            return (
+              <button
+                key={label.id}
+                type="button"
+                onClick={() => setPicked((current) => (on ? current.filter((id) => id !== label.id) : [...current, label.id]))}
+                className="rounded-full px-3 py-1 text-sm"
+                style={{ background: on ? label.color : "transparent", color: on ? "#12110e" : "#f4efe6", border: `1px solid ${label.color}` }}
+              >
+                {label.name}
+              </button>
+            );
+          })}
+        </div>
+      </Field>
+      <Field label="Важность">
+        <select className={inputClass} value={priority} onChange={(event) => setPriority(event.target.value as Priority)}>
+          {PRIORITIES.map((name) => (
+            <option key={name} value={name}>
+              {name}
+            </option>
+          ))}
+        </select>
+      </Field>
+      <Field label="Дедлайн">
+        <input className={inputClass} type="date" value={deadline} onChange={(event) => setDeadline(event.target.value)} />
+      </Field>
+      <Field label="Заметка">
+        <textarea className={inputClass} rows={3} value={description} onChange={(event) => setDescription(event.target.value)} />
+      </Field>
+      {initial?.created ? <p className="mb-3 text-sm text-mist">Поставлена {formatCreated(initial.created)}. Это время не меняется.</p> : null}
+      {error ? <p className="mb-2 text-sm text-ember">{error}</p> : null}
+      <button
+        type="button"
+        className="mt-2 w-full rounded-full bg-gold py-3 text-ink"
+        onClick={() => {
+          if (!title.trim() || !deadline) {
+            setError("Нужны текст и дедлайн");
+            return;
+          }
+          onSave({
+            title: title.trim(),
+            project: board?.name || projectId,
+            projectId: board?.id || projectId,
+            labelIds: picked,
+            priority,
+            deadline,
+            description,
+          });
+          onClose();
+        }}
+      >
+        Сохранить
+      </button>
+    </Modal>
+  );
+}
+
+function formatCreated(iso: string) {
+  if (!iso) return "без даты";
+  return new Date(iso).toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+}
+
+function formatDeadline(key: string) {
+  if (!key) return "не задан";
+  return new Date(dayKeyToDate(key)).toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
+}
+
+function dayKeyToDate(key: string) {
+  const [y, m, d] = key.split("-").map(Number);
+  return new Date(y, (m ?? 1) - 1, d || 1);
+}
