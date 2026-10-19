@@ -104,7 +104,9 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE prev, PWSTR cmd, int show) {
   si.dwFlags = STARTF_USESHOWWINDOW;
   si.wShowWindow = SW_HIDE;
   PROCESS_INFORMATION pi = {0};
-  if (!CreateProcessW(node, cmdline, NULL, NULL, FALSE, CREATE_NO_WINDOW | CREATE_UNICODE_ENVIRONMENT, env, exe, &si, &pi)) {
+  if (!CreateProcessW(node, cmdline, NULL, NULL, FALSE,
+                      CREATE_NO_WINDOW | DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP | CREATE_UNICODE_ENVIRONMENT, env, exe,
+                      &si, &pi)) {
     MessageBoxW(NULL, L"Не удалось запустить программу.", L"ToDO-AKA", MB_ICONERROR);
     return 1;
   }

@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { authClient, authEnabled } from "@/lib/auth/client";
-import { signOut } from "@/lib/auth/client";
+import { authClient, authEnabled, signIn, signOut } from "@/lib/auth/client";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { inputClass } from "@/components/modal";
 import { DesktopDownload } from "@/components/desktop-download";
@@ -87,14 +86,10 @@ export function AccountView() {
 
   async function signInGoogle() {
     setError("");
-    const result = await authClient.signIn.social({
-      provider: "google",
-      callbackURL: "/account",
-    });
-    if (result.error) {
-      setError(
-        "Google ещё не подключён на сервере. В Render нужны GOOGLE_CLIENT_ID и GOOGLE_CLIENT_SECRET.",
-      );
+    try {
+      await signIn("grok-google", { callbackURL: "/account", errorCallbackURL: "/account" });
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Не удалось войти через Google");
     }
   }
 
