@@ -417,6 +417,9 @@ export const usePlanner = create<State>()(
           projects,
           boards: saved.boards?.length ? saved.boards : makeBoards(projects),
           labels: saved.labels?.length ? saved.labels : current.labels,
+          burst: 0,
+          reward: null,
+          undo: null,
         };
       },
     },
