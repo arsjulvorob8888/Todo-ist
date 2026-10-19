@@ -170,7 +170,9 @@ export default defineConfig(({ command, isPreview }) => ({
     ...(command === "build" || isPreview
       ? [
           nitro({
-            preset: "vercel",
+            // Grok/Vercel publish stays on the Vercel preset. Render sets RENDER
+            // and needs a long-running Node server (preset also aliased as render-com).
+            preset: process.env.NITRO_PRESET || (process.env.RENDER ? "render-com" : "vercel"),
             // Auto-registers server/middleware/* (the PWA install page +
             // manifest + head-tag middleware). Nitro v3 defaults serverDir to
             // false, so removing this silently unwires /?install=1 on deploys.
