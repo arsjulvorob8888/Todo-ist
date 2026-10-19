@@ -110,6 +110,12 @@ function main(argv) {
     console.error("usage: node scripts/with-app-env.mjs <command> [args…]");
     process.exit(2);
   }
+  if ((process.env.RENDER || process.env.RENDER_SERVICE_ID) && !process.env.NITRO_PRESET) {
+    process.env.NITRO_PRESET = "render-com";
+  }
+  console.log(
+    `[with-app-env] NITRO_PRESET=${process.env.NITRO_PRESET || "vercel"} RENDER=${process.env.RENDER || ""}`,
+  );
   const env = mergeAppEnv(readAppEnv(projectRoot()), process.env);
   const child = spawn(command, args, { stdio: "inherit", env });
   // The dev server is long-running and is stopped by signalling this wrapper.
