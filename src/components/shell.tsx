@@ -87,7 +87,7 @@ function Ready({ children }: { children: ReactNode }) {
     <div className="min-h-screen bg-ink font-sans text-cream">
       <aside className="fixed inset-y-0 left-0 z-20 hidden w-24 flex-col items-center gap-2 border-r border-line bg-panel py-5 md:flex">
         <Link to="/" className="mb-4 font-display text-lg text-gold">
-          П
+          AKA
         </Link>
         {NAV.map((item) => {
           const active = item.to === "/" ? path === "/" : path.startsWith(item.to);
@@ -112,6 +112,7 @@ function Ready({ children }: { children: ReactNode }) {
       </aside>
 
       <main className="mx-auto min-h-screen max-w-5xl px-4 pt-6 pb-28 md:pl-32 md:pr-8">
+        <p className="mb-1 font-display text-2xl text-gold">ToDO-AKA</p>
         <p className="mb-4 text-xs text-mist">{syncLabel(status)}</p>
         {children}
       </main>

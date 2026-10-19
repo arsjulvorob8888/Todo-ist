@@ -9,7 +9,7 @@ export const Route = createRootRoute({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Порядок" },
+      { title: "ToDO-AKA" },
       { name: "theme-color", content: "#12110e" },
     ],
     links: [

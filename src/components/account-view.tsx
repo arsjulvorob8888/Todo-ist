@@ -22,7 +22,7 @@ export function AccountView() {
       <article className="mt-4 rounded-card border border-gold bg-panel p-4">
         <p className="text-xs tracking-wide text-gold uppercase">Тариф</p>
         <p className="font-display text-3xl">BETA FREE</p>
-        <p className="text-sm text-mist">Один план на время беты. Проекты, метки, помидор и синхронизация телефона с компьютером — без оплаты.</p>
+        <p className="text-sm text-mist">Один план на время беты ToDO-AKA. Проекты, метки, помидор и синхронизация телефона с компьютером — без оплаты.</p>
       </article>
       <p className="mt-4 text-sm text-mist">Связь: {statusText(status)}. Без интернета всё остаётся на устройстве и уходит на сервер, когда сеть вернётся.</p>
       <button type="button" className="mt-3 rounded-full bg-panel-2 px-4 py-2 text-sm" onClick={() => void syncNow()}>

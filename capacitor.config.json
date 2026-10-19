@@ -1,6 +1,6 @@
 {
-  "appId": "app.poryadok.beta",
-  "appName": "Порядок",
+  "appId": "app.todoaka.beta",
+  "appName": "ToDO-AKA",
   "webDir": "dist/client",
   "bundledWebRuntime": false
 }

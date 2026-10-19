@@ -1,4 +1,4 @@
-const CACHE = "poryadok-shell-v1";
+const CACHE = "todoaka-shell-v1";
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(["/", "/favicon.svg"])));
