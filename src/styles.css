@@ -66,6 +66,16 @@
   }
 }
 
+@keyframes live {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgb(232 163 23 / 45%);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgb(232 163 23 / 0%);
+  }
+}
+
 @keyframes pulse-ring {
   0%,
   100% {

@@ -47,17 +47,17 @@ export function Burst({ nonce }: { nonce: number }) {
     const colors = ["#e8a317", "#f6d27a", "#ef5d32", "#f4efe6"];
     const cx = canvas.width * 0.5;
     const cy = canvas.height * 0.38;
-    for (let i = 0; i < 70; i += 1) {
-      const angle = (Math.PI * 2 * i) / 70 + Math.random();
-      const speed = 3 + Math.random() * 7;
+    for (let i = 0; i < 140; i += 1) {
+      const angle = (Math.PI * 2 * i) / 140 + Math.random();
+      const speed = 4 + Math.random() * 9;
       bits.current.push({
         x: cx,
         y: cy,
         vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed - 2,
+        vy: Math.sin(angle) * speed - 3,
         life: 1,
         color: colors[i % colors.length] ?? "#e8a317",
-        w: 6 + Math.random() * 6,
+        w: 7 + Math.random() * 8,
       });
     }
   }, [nonce]);

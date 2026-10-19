@@ -286,20 +286,28 @@ export const usePlanner = create<State>()(
         }
         const firstToday = !spans.some((span) => span.day === day);
         spans = [...spans, { id: uid(), day, category, start: iso, end: "" }];
-        const gained = firstToday ? award(get().xp, 5, "День начат") : {};
-        set({ spans, ...gained });
+        const gained = open ? award(get().xp, 3, "Этап закрыт") : firstToday ? award(get().xp, 5, "День начат") : {};
+        set({ spans, ...gained, ...(open || firstToday ? { burst: get().burst + 1 } : {}) });
       },
       stopSpan: (day, at) => {
         const moment = at ? new Date(at) : new Date();
-        set({
-          spans: get().spans.map((span) => {
-            if (span.day !== day || span.end) return span;
-            if (moment.getTime() <= new Date(span.start).getTime()) return span;
-            return { ...span, end: moment.toISOString() };
-          }),
+        let closed = false;
+        const spans = get().spans.map((span) => {
+          if (span.day !== day || span.end) return span;
+          if (moment.getTime() <= new Date(span.start).getTime()) return span;
+          closed = true;
+          return { ...span, end: moment.toISOString() };
         });
+        const gained = closed ? award(get().xp, 3, "Этап закрыт") : {};
+        set({ spans, ...gained, ...(closed ? { burst: get().burst + 1 } : {}) });
       },
-      updateSpan: (id, patch) => set({ spans: get().spans.map((span) => (span.id === id ? { ...span, ...patch } : span)) }),
+      updateSpan: (id, patch) => {
+        const prev = get().spans.find((span) => span.id === id);
+        const spans = get().spans.map((span) => (span.id === id ? { ...span, ...patch } : span));
+        const scored = typeof patch.score === "number" && prev && prev.score !== patch.score;
+        const gained = scored ? award(get().xp, 2, `Оценка ${patch.score}`) : {};
+        set({ spans, ...gained, ...(scored ? { burst: get().burst + 1 } : {}) });
+      },
       deleteSpan: (id) => set({ spans: get().spans.filter((span) => span.id !== id) }),
       addManualSpan: (category, day, start, end) =>
         set({

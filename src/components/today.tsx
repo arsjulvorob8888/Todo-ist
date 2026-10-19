@@ -91,7 +91,7 @@ export function Today() {
               <p className="font-display text-3xl">{open.category}</p>
               <p className="text-mist">{fmtSpan(spanSeconds(open))}</p>
             </div>
-            <button type="button" onClick={() => { playTap(); stopSpan(today); }} className="rounded-full bg-ember px-4 py-2 text-ink">
+            <button type="button" onClick={() => { playTap(); stopSpan(today); }} className="animate-[live_1.4s_ease-out_infinite] rounded-full bg-ember px-4 py-2 text-ink">
               Стоп
             </button>
           </div>
