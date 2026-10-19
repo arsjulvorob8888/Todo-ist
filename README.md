@@ -22,6 +22,7 @@ npm run dev
 3. После первого адреса сайта открой сервис → Environment и поставь `BETTER_AUTH_URL` = `https://твой-адрес.onrender.com` (без слэша в конце).
 4. Manual Deploy ещё раз, чтобы адрес попал в сборку входа.
 5. Открой сайт → Кабинет → создай аккаунт. Тот же аккаунт на телефоне и на компьютере синхронизирует задачи.
+6. Вход через Google (Gmail): в [Google Cloud Console](https://console.cloud.google.com/apis/credentials) создай OAuth-клиент типа **Web application**. Authorized JavaScript origin: `https://poryadok-1xfe.onrender.com`. Authorized redirect URI: `https://poryadok-1xfe.onrender.com/api/auth/callback/google`. В Environment сервиса Render добавь `GOOGLE_CLIENT_ID` и `GOOGLE_CLIENT_SECRET`, сохрани и сделай **Manual Deploy**.
 
 Бесплатный Render засыпает. Первый заход после паузы может занять около минуты. Пока сервер спит, приложение на уже открытом устройстве продолжает работать локально.
 
