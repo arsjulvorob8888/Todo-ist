@@ -86,10 +86,21 @@ export function AccountView() {
 
   async function signInGoogle() {
     setError("");
-    try {
-      await signIn("grok-google", { callbackURL: "/account", errorCallbackURL: "/account" });
-    } catch (error) {
-      setError(error instanceof Error ? error.message : "Не удалось войти через Google");
+    const preview = window.location.hostname.endsWith(".grok-sandbox.com");
+    if (preview) {
+      try {
+        await signIn("grok-google", { callbackURL: "/account", errorCallbackURL: "/account" });
+      } catch (error) {
+        setError(error instanceof Error ? error.message : "Не удалось войти через Google");
+      }
+      return;
+    }
+    const result = await authClient.signIn.social({
+      provider: "google",
+      callbackURL: "/account",
+    });
+    if (result.error) {
+      setError("Google не подключён. В Render нужны GOOGLE_CLIENT_ID и GOOGLE_CLIENT_SECRET, затем Manual Deploy.");
     }
   }
 
