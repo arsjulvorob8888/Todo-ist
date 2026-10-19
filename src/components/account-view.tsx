@@ -115,7 +115,8 @@ export function AccountView() {
         ? await authClient.signUp.email({ name: name.trim() || email, email, password, callbackURL: "/account" })
         : await authClient.signIn.email({ email, password, callbackURL: "/account" });
     if (result.error) {
-      setError(ruAuthError(result.error.message || ""));
+      const raw = result.error.message || "";
+      setError(raw ? ruAuthError(raw) : "Сервер регистрации ещё старый. На Render нажми Manual Deploy и подожди, пока сайт станет Live.");
       return;
     }
     await syncNow();
