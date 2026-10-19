@@ -178,7 +178,7 @@ function replaceAll(records: SyncChange[]) {
           projects: profile.projects ?? usePlanner.getState().projects,
         }
       : {}),
-  });
+  } as Partial<ReturnType<typeof usePlanner.getState>>);
 }
 
 async function currentUserId() {

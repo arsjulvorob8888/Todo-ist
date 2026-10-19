@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { authClient, authEnabled, signIn, signOut } from "@/lib/auth/client";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
+import { mailReady } from "@/lib/auth/mail.functions";
 import { inputClass } from "@/components/modal";
 import { DesktopDownload } from "@/components/desktop-download";
 import { syncNow, useSyncStatus } from "@/lib/sync";
@@ -13,7 +14,15 @@ export function AccountView() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [sentTo, setSentTo] = useState("");
+  const [mailOn, setMailOn] = useState(false);
   const signedIn = Boolean(user && !user.isDevFallback);
+
+  useEffect(() => {
+    void mailReady()
+      .then((result) => setMailOn(result.configured))
+      .catch(() => setMailOn(false));
+  }, []);
 
   return (
     <div className="mx-auto max-w-lg">
@@ -59,7 +68,23 @@ export function AccountView() {
             Войти через Google
           </button>
           <p className="mt-4 text-center text-xs tracking-wide text-mist uppercase">или почта</p>
-          <p className="mt-2 text-center text-sm text-mist">Письмо на ящик не приходит. Почта здесь только логин.</p>
+          <p className="mt-2 text-center text-sm text-mist">
+            {mailOn
+              ? "После создания аккаунта открой письмо и нажми «Подтвердить почту». Если письма нет во входящих — загляни в Спам."
+              : "Подтверждение письмом включится, когда в Render будут SMTP_USER и SMTP_PASS ящика Яндекса."}
+          </p>
+          {sentTo ? (
+            <article className="mt-4 rounded-card border border-gold bg-panel p-4">
+              <p className="font-display text-2xl">Проверь почту</p>
+              <p className="mt-2 text-sm text-mist">
+                Письмо ушло на {sentTo}. Открой его и подтверди адрес. После этого кабинет откроется сам.
+              </p>
+              {error ? <p className="mt-2 text-sm text-ember">{error}</p> : null}
+              <button type="button" className="mt-4 rounded-full bg-gold px-4 py-2 text-ink" onClick={() => void resend()}>
+                Отправить ещё раз
+              </button>
+            </article>
+          ) : (
           <form
             className="mt-4 space-y-3"
             onSubmit={(event) => {
@@ -80,6 +105,7 @@ export function AccountView() {
               {mode === "up" ? "Уже есть аккаунт" : "Создать аккаунт"}
             </button>
           </form>
+          )}
         </>
       ) : null}
     </div>
@@ -117,10 +143,28 @@ export function AccountView() {
         : await authClient.signIn.email({ email, password, callbackURL: "/account" });
     if (result.error) {
       const raw = result.error.message || "";
+      if (raw.toLowerCase().includes("not verified") || raw.toLowerCase().includes("email_not_verified")) {
+        setSentTo(email);
+      }
       setError(raw ? ruAuthError(raw) : "Сервер регистрации ещё старый. На Render нажми Manual Deploy и подожди, пока сайт станет Live.");
       return;
     }
+    if (result.data?.user && result.data.user.emailVerified === false && !result.data.token) {
+      setSentTo(email);
+      return;
+    }
     await syncNow();
+  }
+
+  async function resend() {
+    setError("");
+    const target = sentTo || email;
+    const result = await authClient.sendVerificationEmail({ email: target, callbackURL: "/account" });
+    if (result.error) {
+      setError("Письмо не ушло. Проверь SMTP_USER и SMTP_PASS в Render и подожди новый деплой.");
+      return;
+    }
+    setSentTo(target);
   }
 }
 
@@ -128,8 +172,11 @@ function ruAuthError(message: string) {
   const text = message.toLowerCase();
   if (text.includes("already") || text.includes("exist")) return "Такая почта уже зарегистрирована. Нажми «Уже есть аккаунт» и войди.";
   if (text.includes("password") && text.includes("short")) return "Пароль должен быть не короче 8 символов.";
+  if (text.includes("not verified") || text.includes("email_not_verified")) {
+    return "Почта ещё не подтверждена. Открой письмо и нажми ссылку. Если его нет — проверь Спам.";
+  }
   if (text.includes("invalid email or password") || text.includes("invalid_email")) {
-    return "Аккаунт ещё не создан или пароль другой. Письмо не отправляется — нажми «Создать аккаунт».";
+    return "Неверная почта или пароль.";
   }
   if (text.includes("invalid")) return "Неверная почта или пароль.";
   return message || "Не получилось. Попробуй ещё раз.";

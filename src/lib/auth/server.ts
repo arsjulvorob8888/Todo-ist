@@ -73,6 +73,7 @@ const env = (key: string): string | undefined => {
 // Explicit off-switch. The deployer sets `VITE_AUTH_ENABLED=true` when it
 // provisions auth; set it to "false" to force auth off everywhere (dev user).
 const authDisabled = env("VITE_AUTH_ENABLED") === "false";
+const confirmByEmail = emailAndPasswordEnabled && Boolean(env("SMTP_USER") && env("SMTP_PASS"));
 
 // Broker federation creds: the deployer injects a per-app client when deployed;
 // otherwise fall back to the shared live-preview client, which the broker accepts
@@ -175,6 +176,16 @@ const grokOAuthPlugin = authConfigured
     })
   : null;
 
+async function mailLink(email: string, name: string | null | undefined, request?: Request) {
+  const { createEmailVerificationToken } = await import("better-auth/api");
+  const { sendConfirmation } = await import("./mail.server");
+  const secret = env("BETTER_AUTH_SECRET") ?? previewAuthSecret();
+  const token = await createEmailVerificationToken(secret, email);
+  const origin = request?.url ? new URL(request.url).origin : env("BETTER_AUTH_URL") || "http://127.0.0.1:8080";
+  const url = `${origin}/api/auth/verify-email?token=${token}&callbackURL=${encodeURIComponent("/account")}`;
+  await sendConfirmation(email, name || "", url);
+}
+
 export const auth = betterAuth({
   baseURL,
   // Deployed apps inject BETTER_AUTH_SECRET. Preview: process-stable secret on
@@ -215,7 +226,27 @@ export const auth = betterAuth({
   session: { cookieCache: { enabled: true, maxAge: 300 } },
 
   // Local email/password — toggled only via `./email-password` (not a plugin).
-  ...(emailAndPasswordEnabled ? { emailAndPassword: { enabled: true } } : {}),
+  ...(emailAndPasswordEnabled
+    ? {
+        emailAndPassword: {
+          enabled: true,
+          requireEmailVerification: confirmByEmail,
+          onExistingUserSignUp: async ({ user }, request) => {
+            if (!confirmByEmail || user.emailVerified) return;
+            await mailLink(user.email, user.name, request);
+          },
+        },
+        emailVerification: {
+          sendOnSignUp: true,
+          sendOnSignIn: true,
+          autoSignInAfterVerification: true,
+          sendVerificationEmail: async ({ user, url }) => {
+            const { sendConfirmation } = await import("./mail.server");
+            await sendConfirmation(user.email, user.name, url);
+          },
+        },
+      }
+    : {}),
 
   ...(googleConfigured
     ? {
