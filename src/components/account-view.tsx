@@ -70,7 +70,7 @@ export function AccountView() {
               <input className={inputClass} placeholder="Имя" value={name} onChange={(event) => setName(event.target.value)} />
             ) : null}
             <input className={inputClass} type="email" placeholder="Почта" value={email} onChange={(event) => setEmail(event.target.value)} />
-            <input className={inputClass} type="password" placeholder="Пароль" value={password} onChange={(event) => setPassword(event.target.value)} />
+            <input className={inputClass} type="password" placeholder="Пароль, от 8 символов" value={password} onChange={(event) => setPassword(event.target.value)} />
             {error ? <p className="text-sm text-ember">{error}</p> : null}
             <button type="submit" className="w-full rounded-full bg-gold py-3 text-ink">
               {mode === "up" ? "Создать аккаунт" : "Войти"}
@@ -106,16 +106,29 @@ export function AccountView() {
 
   async function submit() {
     setError("");
+    if (password.length < 8) {
+      setError("Пароль должен быть не короче 8 символов.");
+      return;
+    }
     const result =
       mode === "up"
-        ? await authClient.signUp.email({ name: name.trim() || email, email, password })
-        : await authClient.signIn.email({ email, password });
+        ? await authClient.signUp.email({ name: name.trim() || email, email, password, callbackURL: "/account" })
+        : await authClient.signIn.email({ email, password, callbackURL: "/account" });
     if (result.error) {
-      setError(result.error.message || "Не получилось");
+      setError(ruAuthError(result.error.message || ""));
       return;
     }
     await syncNow();
   }
+}
+
+function ruAuthError(message: string) {
+  const text = message.toLowerCase();
+  if (text.includes("already") || text.includes("exist")) return "Такая почта уже зарегистрирована. Нажми «Уже есть аккаунт» и войди.";
+  if (text.includes("password") && text.includes("short")) return "Пароль должен быть не короче 8 символов.";
+  if (text.includes("invalid email") || text.includes("email")) return "Проверь почту и пароль.";
+  if (text.includes("invalid")) return "Неверная почта или пароль.";
+  return message || "Не получилось. Попробуй ещё раз.";
 }
 
 function GoogleMark() {
