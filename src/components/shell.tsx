@@ -7,6 +7,7 @@ import { fmtSpan } from "@/lib/dates";
 import { playBell, playLevel, playWin, playXp, setSoundEnabled } from "@/lib/sound";
 import { startSync, useSyncStatus } from "@/lib/sync";
 import { usePlanner } from "@/lib/store";
+import { useCurrentUserState } from "@/lib/auth/use-current-user";
 
 const NAV = [
   { to: "/", label: "Сегодня", icon: Sun },
@@ -86,8 +87,8 @@ function Ready({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-ink font-sans text-cream">
       <aside className="fixed inset-y-0 left-0 z-20 hidden w-24 flex-col items-center gap-2 border-r border-line bg-panel py-5 md:flex">
-        <Link to="/" className="mb-4 font-display text-lg text-gold">
-          AKA
+        <Link to="/account" className="mb-4" aria-label="Аккаунт">
+          <AccountMark />
         </Link>
         {NAV.map((item) => {
           const active = item.to === "/" ? path === "/" : path.startsWith(item.to);
@@ -112,8 +113,15 @@ function Ready({ children }: { children: ReactNode }) {
       </aside>
 
       <main className="mx-auto min-h-screen max-w-5xl px-4 pt-6 pb-28 md:pl-32 md:pr-8">
-        <p className="mb-1 font-display text-2xl text-gold">ToDO-AKA</p>
-        <p className="mb-4 text-xs text-mist">{syncLabel(status)}</p>
+        <div className="mb-4 flex items-center gap-3">
+          <Link to="/account" aria-label="Аккаунт">
+            <AccountMark />
+          </Link>
+          <div>
+            <p className="font-display text-2xl text-gold">ToDO-AKA</p>
+            <p className="text-xs text-mist">{syncLabel(status)}</p>
+          </div>
+        </div>
         {children}
       </main>
 
@@ -168,6 +176,34 @@ function Ready({ children }: { children: ReactNode }) {
         })}
       </nav>
     </div>
+  );
+}
+
+function AccountMark() {
+  const { user, isPending } = useCurrentUserState();
+  const signedIn = Boolean(user && !user.isDevFallback);
+  const letter = (user?.displayName || user?.primaryEmail || "?").trim().charAt(0).toUpperCase();
+  return (
+    <span
+      title={signedIn ? `${user?.displayName || "Аккаунт"} · вошли` : "Не вошли"}
+      className={cn(
+        "relative grid size-11 place-items-center rounded-full border",
+        signedIn ? "border-gold bg-gold text-ink" : "border-line bg-panel-2 text-mist",
+        isPending && "opacity-60",
+      )}
+    >
+      {signedIn ? (
+        <span className="font-display text-lg leading-none">{letter}</span>
+      ) : (
+        <UserRound className="size-5" />
+      )}
+      <span
+        className={cn(
+          "absolute right-0 bottom-0 size-3 rounded-full border-2 border-ink",
+          signedIn ? "bg-gold-2" : "bg-line",
+        )}
+      />
+    </span>
   );
 }
 
