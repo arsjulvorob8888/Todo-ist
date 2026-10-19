@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { DesktopDownload } from "@/components/desktop-download";
 import { Field, inputClass, Modal } from "@/components/modal";
 import { usePlanner } from "@/lib/store";
 
@@ -22,6 +23,7 @@ export function MoreView() {
         <p className="text-sm text-mist">Справочники</p>
         <h1 className="font-display text-4xl">Ещё</h1>
       </header>
+      <DesktopDownload />
       <div className="mb-4 flex flex-wrap gap-2">
         {(
           [

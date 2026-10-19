@@ -3,6 +3,7 @@ import { authClient, authEnabled } from "@/lib/auth/client";
 import { signOut } from "@/lib/auth/client";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { inputClass } from "@/components/modal";
+import { DesktopDownload } from "@/components/desktop-download";
 import { syncNow, useSyncStatus } from "@/lib/sync";
 
 export function AccountView() {
@@ -24,6 +25,7 @@ export function AccountView() {
         <p className="font-display text-3xl">BETA FREE</p>
         <p className="text-sm text-mist">Один план на время беты ToDO-AKA. Проекты, метки, помидор и синхронизация телефона с компьютером — без оплаты.</p>
       </article>
+      <DesktopDownload />
       <p className="mt-4 text-sm text-mist">Связь: {statusText(status)}. Без интернета всё остаётся на устройстве и уходит на сервер, когда сеть вернётся.</p>
       <button type="button" className="mt-3 rounded-full bg-panel-2 px-4 py-2 text-sm" onClick={() => void syncNow()}>
         Синхронизировать
