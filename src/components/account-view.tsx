@@ -59,6 +59,7 @@ export function AccountView() {
             Войти через Google
           </button>
           <p className="mt-4 text-center text-xs tracking-wide text-mist uppercase">или почта</p>
+          <p className="mt-2 text-center text-sm text-mist">Письмо на ящик не приходит. Почта здесь только логин.</p>
           <form
             className="mt-4 space-y-3"
             onSubmit={(event) => {
@@ -127,7 +128,9 @@ function ruAuthError(message: string) {
   const text = message.toLowerCase();
   if (text.includes("already") || text.includes("exist")) return "Такая почта уже зарегистрирована. Нажми «Уже есть аккаунт» и войди.";
   if (text.includes("password") && text.includes("short")) return "Пароль должен быть не короче 8 символов.";
-  if (text.includes("invalid email") || text.includes("email")) return "Проверь почту и пароль.";
+  if (text.includes("invalid email or password") || text.includes("invalid_email")) {
+    return "Аккаунт ещё не создан или пароль другой. Письмо не отправляется — нажми «Создать аккаунт».";
+  }
   if (text.includes("invalid")) return "Неверная почта или пароль.";
   return message || "Не получилось. Попробуй ещё раз.";
 }
