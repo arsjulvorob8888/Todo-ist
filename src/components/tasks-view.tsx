@@ -200,6 +200,14 @@ export function TasksView() {
   );
 }
 
+function priorityLook(priority: Priority, done: boolean) {
+  if (done) return { rail: "border-l-line", wash: "bg-panel", ring: "border-line", pill: "bg-panel-2 text-mist" };
+  if (priority === "Срочно") return { rail: "border-l-ember", wash: "bg-ember/10", ring: "border-ember", pill: "bg-ember text-ink" };
+  if (priority === "Высокий") return { rail: "border-l-gold", wash: "bg-panel", ring: "border-gold", pill: "border border-gold text-gold" };
+  if (priority === "Средний") return { rail: "border-l-gold-2", wash: "bg-panel", ring: "border-gold-2", pill: "bg-panel-2 text-cream" };
+  return { rail: "border-l-line", wash: "bg-panel", ring: "border-line", pill: "text-mist" };
+}
+
 function matchesDue(task: Task, due: string) {
   if (due === "Все") return true;
   if (due === "Без дедлайна") return !task.deadline;
@@ -230,20 +238,24 @@ function TaskRow({
   onPomo: () => void;
 }) {
   const done = task.status === "Выполнено";
+  const look = priorityLook(task.priority, done);
   return (
-    <li className="flex items-center gap-3 rounded-card border border-line bg-panel px-3 py-3">
+    <li className={`flex items-center gap-3 rounded-card border border-line border-l-4 px-3 py-3 ${look.rail} ${look.wash}`}>
       <button
         type="button"
         aria-label={done ? "Вернуть в работу" : "Выполнить"}
         onClick={onDone}
-        className={`flex size-8 shrink-0 items-center justify-center rounded-full border-2 text-sm font-bold ${done ? "border-gold bg-gold text-ink" : "border-gold"}`}
+        className={`flex size-8 shrink-0 items-center justify-center rounded-full border-2 text-sm font-bold ${done ? "border-gold bg-gold text-ink" : look.ring}`}
       >
         {done ? "✓" : ""}
       </button>
       <div className="min-w-0 flex-1">
-        <p className={done ? "text-mist line-through" : ""}>{task.title}</p>
+        <p className={`flex flex-wrap items-center gap-2 ${done ? "text-mist line-through" : ""}`}>
+          <span>{task.title}</span>
+          <span className={`rounded-full px-2 py-0.5 text-[11px] leading-none font-semibold tracking-wide ${look.pill}`}>{task.priority}</span>
+        </p>
         <p className="text-xs text-mist">
-          Поставлена {formatCreated(task.created)} · дедлайн {formatDeadline(task.deadline)} · {task.priority} · {task.status}
+          Поставлена {formatCreated(task.created)} · дедлайн {formatDeadline(task.deadline)} · {task.status}
         </p>
         {(task.labelIds ?? []).length ? (
           <p className="mt-1 flex flex-wrap gap-1">

@@ -157,22 +157,28 @@ export function Today() {
           <p className="rounded-card border border-dashed border-line p-6 text-mist">Список пуст. Добавь одно дело — и закрой его.</p>
         ) : (
           <ul className="space-y-2">
-            {openTasks.map((task) => (
-              <li key={task.id} className="flex items-center gap-3 rounded-card border border-line bg-panel px-3 py-3">
+            {openTasks.map((task) => {
+              const urgent = task.priority === "Срочно";
+              const high = task.priority === "Высокий";
+              return (
+              <li key={task.id} className={`flex items-center gap-3 rounded-card border border-line border-l-4 px-3 py-3 ${urgent ? "border-l-ember bg-ember/10" : high ? "border-l-gold bg-panel" : "border-l-line bg-panel"}`}>
                 <button
                   type="button"
                   aria-label="Выполнить"
                   onClick={() => completeTask(task.id)}
-                  className="size-8 shrink-0 rounded-full border-2 border-gold"
+                  className={`size-8 shrink-0 rounded-full border-2 ${urgent ? "border-ember" : "border-gold"}`}
                 />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate">{task.title}</p>
+                  <p className="flex flex-wrap items-center gap-2">
+                    <span className="truncate">{task.title}</span>
+                    <span className={`rounded-full px-2 py-0.5 text-[11px] leading-none font-semibold ${urgent ? "bg-ember text-ink" : high ? "border border-gold text-gold" : "bg-panel-2 text-mist"}`}>
+                      {task.priority}
+                    </span>
+                  </p>
                   <p className="text-xs text-mist">
                     Поставлена {new Date(task.created).toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
                     {" · "}
                     дедлайн {task.deadline ? new Date(task.deadline + "T00:00:00").toLocaleDateString("ru-RU", { day: "numeric", month: "short" }) : "не задан"}
-                    {" · "}
-                    {task.priority}
                   </p>
                 </div>
                 <button
@@ -186,7 +192,8 @@ export function Today() {
                   25 мин
                 </button>
               </li>
-            ))}
+              );
+            })}
           </ul>
         )}
       </section>
