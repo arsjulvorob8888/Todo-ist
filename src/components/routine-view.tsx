@@ -5,16 +5,19 @@ import { dayKey } from "@/lib/dates";
 import { playTap } from "@/lib/sound";
 import { usePlanner, type RoutineBlock } from "@/lib/store";
 
+const NONE: string[] = [];
+
 export function RoutineView() {
   const categories = usePlanner((s) => s.timeCats);
-  const routine = usePlanner((s) => s.routine ?? []);
+  const routine = usePlanner((s) => s.routine) ?? NONE;
   const addRoutine = usePlanner((s) => s.addRoutine);
   const updateRoutine = usePlanner((s) => s.updateRoutine);
   const moveRoutine = usePlanner((s) => s.moveRoutine);
   const placeRoutine = usePlanner((s) => s.placeRoutine);
   const deleteRoutine = usePlanner((s) => s.deleteRoutine);
   const toggleRoutineDone = usePlanner((s) => s.toggleRoutineDone);
-  const doneToday = usePlanner((s) => (s.routineDone ?? {})[dayKey()] ?? []);
+  const today = dayKey();
+  const doneToday = usePlanner((s) => s.routineDone?.[today]) ?? NONE;
   const [category, setCategory] = useState(categories[0] ?? "");
   const [start, setStart] = useState("08:00");
   const [end, setEnd] = useState("09:00");
