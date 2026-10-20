@@ -243,7 +243,12 @@ function deadlineLeft(deadline: string, now: number) {
   if (Number.isNaN(end)) return null;
   const delta = end - now;
   const total = Math.floor(Math.abs(delta) / 60000);
-  const hours = Math.floor(total / 60);
+  const days = Math.floor(total / (60 * 24));
+  const hours = Math.floor(total / 60) % 24;
   const minutes = total % 60;
-  return { overdue: delta < 0, text: `${hours}:${String(minutes).padStart(2, "0")}` };
+  const text =
+    days > 0
+      ? `${days} д ${hours} ч ${String(minutes).padStart(2, "0")} мин`
+      : `${hours} ч ${String(minutes).padStart(2, "0")} мин`;
+  return { overdue: delta < 0, text };
 }
