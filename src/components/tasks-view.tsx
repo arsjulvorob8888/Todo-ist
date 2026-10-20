@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Field, inputClass, Modal } from "@/components/modal";
 import { addDays, dayKey } from "@/lib/dates";
 import { playStart } from "@/lib/sound";
@@ -25,6 +25,12 @@ export function TasksView() {
   const [project, setProject] = useState("Все");
   const [labelId, setLabelId] = useState("Все");
   const [labelName, setLabelName] = useState("");
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), 30000);
+    return () => window.clearInterval(id);
+  }, []);
 
   const visible = tasks.filter((task) => {
     if (filter !== "Все" && task.status !== filter) return false;
@@ -142,6 +148,7 @@ export function TasksView() {
           <TaskRow
             key={task.id}
             task={task}
+            now={now}
             labels={labels}
             onDone={() => completeTask(task.id)}
             onDelete={() => deleteTask(task.id)}
@@ -200,6 +207,17 @@ export function TasksView() {
   );
 }
 
+function deadlineLeft(deadline: string, now: number) {
+  if (!deadline) return null;
+  const end = new Date(`${deadline}T23:59:59`).getTime();
+  if (Number.isNaN(end)) return null;
+  const delta = end - now;
+  const total = Math.floor(Math.abs(delta) / 60000);
+  const hours = Math.floor(total / 60);
+  const minutes = total % 60;
+  return { overdue: delta < 0, text: `${hours}:${String(minutes).padStart(2, "0")}` };
+}
+
 function priorityLook(priority: Priority, done: boolean) {
   if (done) return { rail: "border-l-line", wash: "bg-panel", ring: "border-line", pill: "bg-panel-2 text-mist" };
   if (priority === "Срочно") return { rail: "border-l-ember", wash: "bg-ember/10", ring: "border-ember", pill: "bg-ember text-ink" };
@@ -222,6 +240,7 @@ function matchesDue(task: Task, due: string) {
 
 function TaskRow({
   task,
+  now,
   labels,
   onDone,
   onDelete,
@@ -230,6 +249,7 @@ function TaskRow({
   onPomo,
 }: {
   task: Task;
+  now: number;
   labels: Mark[];
   onDone: () => void;
   onDelete: () => void;
@@ -239,6 +259,7 @@ function TaskRow({
 }) {
   const done = task.status === "Выполнено";
   const look = priorityLook(task.priority, done);
+  const left = deadlineLeft(task.deadline, now);
   return (
     <li className={`flex items-center gap-3 rounded-card border border-line border-l-4 px-3 py-3 ${look.rail} ${look.wash}`}>
       <button
@@ -269,6 +290,14 @@ function TaskRow({
           </p>
         ) : null}
       </div>
+      {left ? (
+        <span
+          className={`w-16 shrink-0 text-right font-display text-xl tabular-nums ${left.overdue ? "text-ember" : done ? "text-mist" : "text-gold"}`}
+          title={left.overdue ? "Дедлайн прошёл" : "До конца дня дедлайна"}
+        >
+          {left.overdue ? `−${left.text}` : left.text}
+        </span>
+      ) : null}
       <button type="button" onClick={onEdit} className="text-sm text-gold">
         Править
       </button>
