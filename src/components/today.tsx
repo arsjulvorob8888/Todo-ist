@@ -243,7 +243,10 @@ function Pomodoro({
     <section className="rounded-card border border-gold bg-panel p-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-xs tracking-wide text-gold uppercase">Помидор</p>
+          <p className="flex items-center gap-1.5 text-xs tracking-wide text-gold uppercase">
+            <Tomato className="size-4" />
+            Pomidorro
+          </p>
           <h2 className="font-display text-3xl">{active ? fmtSpan(left) : "25 минут одного дела"}</h2>
           <p className="mt-1 max-w-xl text-sm text-mist">
             {pomo.mode === "break"
@@ -295,6 +298,17 @@ function Pomodoro({
       </label>
       {linked ? <p className="mt-2 text-sm text-gold">{linked.title}</p> : null}
     </section>
+  );
+}
+
+function Tomato({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
+      <path d="M12 5.2c.6-1.6 2.2-2.6 3.4-2.7-.3 1.7-1.6 2.8-2.8 3.2" fill="#8fbf6a" />
+      <path d="M11.2 6.2c1.6-.2 2.8.6 3.4 1.4" fill="none" stroke="#8fbf6a" strokeWidth="1.2" strokeLinecap="round" />
+      <ellipse cx="12" cy="14.2" rx="6.4" ry="5.6" fill="#ef5d32" />
+      <path d="M9.4 12.2c.3 1.1-.1 1.8-.8 2.2" fill="none" stroke="#f6d27a" strokeWidth="1" strokeLinecap="round" />
+    </svg>
   );
 }
 
