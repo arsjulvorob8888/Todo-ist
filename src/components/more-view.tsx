@@ -19,36 +19,42 @@ export function TimeCategories() {
   const deleteCategory = usePlanner((s) => s.deleteCategory);
   const placeCategory = usePlanner((s) => s.placeCategory);
   const [name, setName] = useState("");
-  const [project, setProject] = useState(projects[0] ?? "Прочее");
+  const [project, setProject] = useState("");
   const [edit, setEdit] = useState<string | null>(null);
   const [next, setNext] = useState("");
   const [nextProject, setNextProject] = useState("");
   return (
     <div>
-      <div className="mb-3 grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
+      <Field label="Название">
         <input className={inputClass} placeholder="Новая категория" value={name} onChange={(event) => setName(event.target.value)} />
+      </Field>
+      <Field label="Проект">
         <select className={inputClass} value={project} onChange={(event) => setProject(event.target.value)}>
+          <option value="">Выбери проект</option>
           {projects.map((item) => (
             <option key={item}>{item}</option>
           ))}
         </select>
-        <button
-          type="button"
-          className="rounded-full bg-gold px-4 text-ink"
-          onClick={() => {
-            addCategory("time", name, project);
-            setName("");
-          }}
-        >
-          Добавить
-        </button>
-      </div>
+      </Field>
+      <button
+        type="button"
+        className="mb-4 w-full rounded-full bg-gold py-3 text-ink disabled:opacity-40"
+        disabled={!name.trim() || !project}
+        onClick={() => {
+          addCategory("time", name, project);
+          setName("");
+        }}
+      >
+        Добавить в проект
+      </button>
       <ul className="space-y-2">
         {timeCats.map((item) => (
           <li key={item} className="flex items-center justify-between gap-3 rounded-2xl border border-line bg-panel px-3 py-3">
             <span>
               {item}
-              <span className="mt-0.5 block text-xs text-mist">{catProject[item] || "Прочее"}</span>
+              <span className={`mt-0.5 block text-xs ${catProject[item] ? "text-mist" : "text-ember"}`}>
+                {catProject[item] ? `Проект: ${catProject[item]}` : "Проект не назначен"}
+              </span>
             </span>
             <span className="flex gap-3 text-sm">
               <button

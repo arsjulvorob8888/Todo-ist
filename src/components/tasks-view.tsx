@@ -444,12 +444,17 @@ function TaskForm({
           <option value="">Выбери категорию</option>
           {categories.map((name) => (
             <option key={name} value={name}>
-              {name} · {catProject[name] || "Прочее"}
+              {name}
+              {catProject[name] ? ` · ${catProject[name]}` : ""}
             </option>
           ))}
         </select>
       </Field>
-      {category ? <p className="-mt-2 mb-3 text-sm text-mist">Проект: {catProject[category] || "Прочее"}</p> : null}
+      {category ? (
+        <p className={`-mt-2 mb-3 text-sm ${catProject[category] ? "text-mist" : "text-ember"}`}>
+          {catProject[category] ? `Проект: ${catProject[category]}` : "Проект не назначен. Открой категории в тайминге и выбери проект."}
+        </p>
+      ) : null}
       <Field label="Метки">
         <div className="flex flex-wrap gap-2">
           {labels.map((label) => {
@@ -493,7 +498,11 @@ function TaskForm({
             setError("Нужны текст, категория и дедлайн");
             return;
           }
-          const projectName = catProject[category] || "Прочее";
+          const projectName = catProject[category];
+          if (!projectName) {
+            setError("У этой категории ещё нет проекта. Назначь его в тайминге.");
+            return;
+          }
           const home = boards.find((item) => item.name === projectName) || boards.find((item) => item.inbox);
           onSave({
             title: title.trim(),
