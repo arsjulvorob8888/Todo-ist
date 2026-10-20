@@ -244,8 +244,18 @@ export async function syncNow() {
       localStorage.removeItem(CURSOR_KEY);
       localStorage.setItem(USER_KEY, userId);
     }
+    const state = usePlanner.getState();
+    const hasLocal =
+      state.tasks.length +
+        state.spans.length +
+        state.goals.length +
+        state.contacts.length +
+        state.ideas.length +
+        state.books.length +
+        (state.routine?.length ?? 0) >
+        0 || state.xp > 0;
     const first = localStorage.getItem(CURSOR_KEY) == null;
-    if (first) {
+    if (first && !hasLocal) {
       const pulled = await pushPull({ data: { since: 0, changes: [] } });
       if (pulled.records.length) {
         replaceAll(pulled.records as SyncChange[]);

@@ -600,23 +600,27 @@ export const usePlanner = create<State>()(
       name: "poryadok-v1",
       merge: (persisted, current) => {
         const saved = (persisted ?? {}) as Partial<State>;
-        const projects = saved.projects?.length ? saved.projects : current.projects;
-        const cats = saved.timeCats?.length ? saved.timeCats : current.timeCats;
-        const tasks = (saved.tasks ?? []).map((task) => withGuessedCategory(task, cats));
-        return {
-          ...current,
-          ...saved,
-          projects,
-          boards: saved.boards?.length ? saved.boards : makeBoards(projects),
-          labels: saved.labels?.length ? saved.labels : current.labels,
-          routine: saved.routine ?? [],
-          routineDone: saved.routineDone ?? {},
-          catProject: saved.catProject ?? {},
-          tasks: saved.tasks ? tasks : current.tasks,
-          burst: 0,
-          reward: null,
-          undo: null,
-        };
+        try {
+          const projects = saved.projects?.length ? saved.projects : current.projects;
+          const cats = saved.timeCats?.length ? saved.timeCats : current.timeCats;
+          const tasks = (saved.tasks ?? []).map((task) => withGuessedCategory(task, cats));
+          return {
+            ...current,
+            ...saved,
+            projects,
+            boards: saved.boards?.length ? saved.boards : makeBoards(projects),
+            labels: saved.labels?.length ? saved.labels : current.labels,
+            routine: saved.routine ?? [],
+            routineDone: saved.routineDone ?? {},
+            catProject: saved.catProject ?? {},
+            tasks: saved.tasks ? tasks : current.tasks,
+            burst: 0,
+            reward: null,
+            undo: null,
+          };
+        } catch {
+          return { ...current, ...saved, burst: 0, reward: null, undo: null };
+        }
       },
     },
   ),
