@@ -35,6 +35,7 @@ export function TimingView() {
   const updateSpan = usePlanner((s) => s.updateSpan);
   const moveSpan = usePlanner((s) => s.moveSpan);
   const addManualSpan = usePlanner((s) => s.addManualSpan);
+  const [day, setDay] = useState(dayKey());
   const [sort, setSort] = useState<SpanSort>("new");
   const [manual, setManual] = useState(false);
   const [cats, setCats] = useState(false);
