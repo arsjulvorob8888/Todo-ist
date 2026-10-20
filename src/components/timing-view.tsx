@@ -4,7 +4,7 @@ import { Field, inputClass, Modal } from "@/components/modal";
 import { ScorePips } from "@/components/score-pips";
 import { addDays, clock, dayKey, fmtHm, fmtSpan, formatDay } from "@/lib/dates";
 import { playStart, playStop, playTap } from "@/lib/sound";
-import { dayScore, spanSeconds, usePlanner } from "@/lib/store";
+import { dayScore, spanSeconds, usePlanner, compareSpans } from "@/lib/store";
 
 export function TimingView() {
   const timeCats = usePlanner((s) => s.timeCats);
@@ -27,7 +27,7 @@ export function TimingView() {
     return () => window.clearInterval(id);
   }, []);
 
-  const daySpans = spans.filter((span) => span.day === day).sort(byPlace);
+  const daySpans = spans.filter((span) => span.day === day).sort(compareSpans);
   const open = daySpans.find((span) => !span.end);
   const totals = new Map<string, number>();
   for (const span of daySpans) totals.set(span.category, (totals.get(span.category) ?? 0) + spanSeconds(span));
@@ -232,13 +232,6 @@ export function TimingView() {
       ) : null}
     </div>
   );
-}
-
-function byPlace(a: { order?: number; start: string }, b: { order?: number; start: string }) {
-  const left = a.order ?? Date.parse(a.start);
-  const right = b.order ?? Date.parse(b.start);
-  if (left !== right) return left - right;
-  return a.start.localeCompare(b.start);
 }
 
 function hhmm(iso: string) {

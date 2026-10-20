@@ -123,6 +123,14 @@ export function dayScore(spans: Span[], day: string) {
   return Math.round((sum / rated.length) * 10) / 10;
 }
 
+export function compareSpans(a: { order?: number; start: string }, b: { order?: number; start: string }) {
+  const aSet = a.order != null;
+  const bSet = b.order != null;
+  if (aSet && bSet) return (a.order ?? 0) - (b.order ?? 0);
+  if (aSet !== bSet) return aSet ? 1 : -1;
+  return b.start.localeCompare(a.start);
+}
+
 export function spanSeconds(span: Span, now = Date.now()) {
   const start = new Date(span.start).getTime();
   const cap = span.end ? new Date(span.end).getTime() : Math.min(now, endOfDayMs(span.day));
@@ -329,7 +337,7 @@ export const usePlanner = create<State>()(
         if (!span) return;
         const dayList = all
           .filter((item) => item.day === span.day)
-          .sort((a, b) => (a.order ?? Date.parse(a.start)) - (b.order ?? Date.parse(b.start)) || a.start.localeCompare(b.start));
+          .sort(compareSpans);
         const index = dayList.findIndex((item) => item.id === id);
         const next = index + direction;
         if (index < 0 || next < 0 || next >= dayList.length) return;
