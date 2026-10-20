@@ -82,6 +82,30 @@ function snapshot(state: ReturnType<typeof usePlanner.getState>) {
   return map;
 }
 
+function hasLocalData(state: ReturnType<typeof usePlanner.getState>) {
+  return (
+    state.tasks.length +
+      state.spans.length +
+      state.goals.length +
+      state.contacts.length +
+      state.ideas.length +
+      state.books.length +
+      (state.routine?.length ?? 0) >
+      0 || state.xp > 0
+  );
+}
+
+function waitHydrated() {
+  const persist = usePlanner.persist;
+  if (!persist || persist.hasHydrated()) return Promise.resolve();
+  return new Promise<void>((resolve) => {
+    const unsub = persist.onFinishHydration(() => {
+      unsub();
+      resolve();
+    });
+  });
+}
+
 function changesSince(sent: Sent, state: ReturnType<typeof usePlanner.getState>): SyncChange[] {
   const now = Date.now();
   const current = snapshot(state);
@@ -96,6 +120,8 @@ function changesSince(sent: Sent, state: ReturnType<typeof usePlanner.getState>)
   for (const key of Object.keys(sent)) {
     if (!current.has(key) && sent[key] !== "deleted") {
       const [collection, id] = key.split(":");
+      const list = state[collection as (typeof LISTS)[number]];
+      if (Array.isArray(list) && list.length === 0) continue;
       changes.push({ collection, id, updatedAt: now, deleted: true, payload: {} });
       sent[key] = "deleted";
     }
@@ -234,6 +260,7 @@ export async function syncNow() {
   running = true;
   emit("sync");
   try {
+    await waitHydrated();
     const userId = await currentUserId();
     if (!userId) {
       emit("local");
@@ -244,25 +271,17 @@ export async function syncNow() {
       localStorage.removeItem(CURSOR_KEY);
       localStorage.setItem(USER_KEY, userId);
     }
-    const state = usePlanner.getState();
-    const hasLocal =
-      state.tasks.length +
-        state.spans.length +
-        state.goals.length +
-        state.contacts.length +
-        state.ideas.length +
-        state.books.length +
-        (state.routine?.length ?? 0) >
-        0 || state.xp > 0;
-    const first = localStorage.getItem(CURSOR_KEY) == null;
-    if (first && !hasLocal) {
+    if (!hasLocalData(usePlanner.getState())) {
       const pulled = await pushPull({ data: { since: 0, changes: [] } });
-      if (pulled.records.length) {
+      const useful = (pulled.records as SyncChange[]).some(
+        (row) => !row.deleted && ["tasks", "spans", "goals", "contacts", "ideas", "books"].includes(row.collection),
+      );
+      if (useful) {
         replaceAll(pulled.records as SyncChange[]);
         rememberCursor(pulled.records as SyncChange[], 0);
-        emit("ok");
-        return;
       }
+      emit("ok");
+      return;
     }
     const sent = loadSent();
     const changes = changesSince(sent, usePlanner.getState());

@@ -87,12 +87,13 @@ const GOALS: Goal[] = [
 ];
 
 export function recoverIfEmpty() {
-  if (typeof localStorage === "undefined" || localStorage.getItem(FLAG)) return;
+  if (typeof localStorage === "undefined") return;
   const state = usePlanner.getState();
   if (state.tasks.length > 0) {
     localStorage.setItem(FLAG, "kept");
     return;
   }
+  if (localStorage.getItem(FLAG) === "kept") return;
   const timeCats = [...new Set([...CATS, ...state.timeCats])].sort((a, b) => a.localeCompare(b, "ru"));
   usePlanner.setState({
     timeCats,

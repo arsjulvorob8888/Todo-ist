@@ -33,7 +33,10 @@ export const pushPull = createServerFn({ method: "POST" })
         insert into sync_records (user_id, collection, record_id, payload, updated_at, deleted)
         values (${userId}, ${change.collection}, ${change.id}, ${payload}, ${change.updatedAt}, ${change.deleted})
         on conflict (user_id, collection, record_id) do update
-        set payload = excluded.payload,
+        set payload = case
+              when excluded.deleted and excluded.payload = '{}' then sync_records.payload
+              else excluded.payload
+            end,
             updated_at = excluded.updated_at,
             deleted = excluded.deleted
         where sync_records.updated_at <= excluded.updated_at
