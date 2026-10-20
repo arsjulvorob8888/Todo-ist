@@ -1,6 +1,14 @@
 import { usePlanner } from "@/lib/store";
+import { saveBackup } from "@/lib/backup.functions";
 
-export const BACKUP_FILE = "ToDO-AKA-данные.json";
+export function backupFileName(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `ToDO-AKA-данные-${year}-${month}-${day}.json`;
+}
+
+export const BACKUP_FILE = backupFileName();
 
 const KEYS = [
   "mission",
@@ -111,6 +119,8 @@ export async function rememberSnapshot() {
   }
   await txDone(tx);
   await writeFolderFile(payload);
+  const name = backupFileName(new Date(payload.savedAt));
+  void saveBackup({ data: { name, savedAt: payload.savedAt, payload: JSON.stringify(payload) } }).catch(() => undefined);
 }
 
 export async function latestBackup() {
@@ -142,7 +152,7 @@ export function downloadBackup() {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = BACKUP_FILE;
+  link.download = backupFileName();
   link.click();
   URL.revokeObjectURL(url);
 }
@@ -192,7 +202,7 @@ async function writeFolderFile(payload: ReturnType<typeof backupPayload>) {
   if (!handle) return;
   const permission = handle.queryPermission ? await handle.queryPermission({ mode: "readwrite" }) : "granted";
   if (permission !== "granted") return;
-  const file = await handle.getFileHandle(BACKUP_FILE, { create: true });
+  const file = await handle.getFileHandle(backupFileName(), { create: true });
   const writable = await file.createWritable();
   await writable.write(JSON.stringify(payload, null, 2));
   await writable.close();

@@ -4,7 +4,8 @@ import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { mailReady } from "@/lib/auth/mail.functions";
 import { inputClass } from "@/components/modal";
 import { DesktopDownload } from "@/components/desktop-download";
-import { BACKUP_FILE, backupFolderName, chooseBackupFolder, downloadBackup, latestBackup, restoreBackupFile } from "@/lib/backup";
+import { backupFileName, backupFolderName, chooseBackupFolder, downloadBackup, latestBackup, restoreBackupFile } from "@/lib/backup";
+import { backupLocation } from "@/lib/backup.functions";
 import { syncNow, useSyncStatus } from "@/lib/sync";
 
 export function AccountView() {
@@ -197,25 +198,38 @@ function GoogleMark() {
 
 function BackupCard() {
   const [folder, setFolder] = useState("");
+  const [serverFolder, setServerFolder] = useState("");
   const [savedAt, setSavedAt] = useState("");
   const [note, setNote] = useState("");
+  const fileName = backupFileName();
 
   useEffect(() => {
     void backupFolderName().then(setFolder);
     void latestBackup().then((snap) => setSavedAt(snap?.savedAt ?? ""));
+    void backupLocation()
+      .then((place) => setServerFolder(place.folder))
+      .catch(() => setServerFolder(""));
   }, []);
 
   return (
     <article className="mt-4 rounded-card border border-line bg-panel p-4">
       <p className="text-xs tracking-wide text-gold uppercase">Резервная копия</p>
-      <p className="mt-2 font-display text-2xl">Файл {BACKUP_FILE}</p>
-      <p className="mt-2 text-sm text-mist">
-        {folder
-          ? `Он лежит в папке «${folder}», которую ты выбрал. Ищи файл с этим именем.`
-          : "Папка ещё не выбрана. Нажми «Запомнить папку» и укажи, например, Документы. После этого файл будет обновляться сам."}
+      <p className="mt-2 font-display text-2xl">Файл {fileName}</p>
+      <p className="mt-2 text-sm text-cream">
+        Папка на сервере:{" "}
+        <span className="break-all text-gold">
+          {serverFolder || "/opt/render/project/src/data/backups/<id пользователя>"}
+        </span>
       </p>
       <p className="mt-2 text-sm text-mist">
-        Кнопка «Скачать файл» кладёт такую же копию в папку «Загрузки». Отдельно в браузере хранятся последние 20 автоматических копий. Пустой экран их не стирает.
+        {serverFolder
+          ? `Ищи там файл ${fileName}. Дата в имени — день скачивания. Та же копия лежит в базе, таблица backups, и не пропадает при обновлении сайта.`
+          : "Путь появится после входа. Пока можно скачать файл: он ляжет в «Загрузки» с датой в имени."}
+      </p>
+      <p className="mt-2 text-sm text-mist">
+        Кнопка «Скачать файл» кладёт {fileName} в папку «Загрузки».
+        {folder ? ` На этом компьютере та же копия ещё пишется в папку «${folder}».` : ""}
+        {" "}Отдельно в браузере хранятся последние 20 автоматических копий. Пустой экран их не стирает.
         {savedAt ? ` Последняя: ${new Date(savedAt).toLocaleString("ru")}.` : ""}
       </p>
       <div className="mt-3 flex flex-wrap gap-2">
@@ -239,7 +253,7 @@ function BackupCard() {
           className="rounded-full bg-panel-2 px-4 py-2 text-sm"
           onClick={() => {
             downloadBackup();
-            setNote("Файл скачан. Он в папке «Загрузки».");
+            setNote(`Файл ${fileName} скачан. Он в папке «Загрузки».`);
           }}
         >
           Скачать файл
