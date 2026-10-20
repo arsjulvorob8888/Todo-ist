@@ -34,6 +34,13 @@ export type Span = {
   order?: number;
 };
 
+export type RoutineBlock = {
+  id: string;
+  category: string;
+  start: string;
+  end: string;
+};
+
 export type Goal = { id: string; title: string; content: string };
 export type Contact = { id: string; name: string; group: string; birthday: string };
 export type Idea = { id: string; title: string; note: string };
@@ -151,6 +158,7 @@ type State = {
   boards: Board[];
   labels: Mark[];
   timeCats: string[];
+  routine: RoutineBlock[];
   tasks: Task[];
   spans: Span[];
   goals: Goal[];
@@ -182,6 +190,10 @@ type State = {
   renameCategory: (kind: "project" | "time", from: string, to: string) => void;
   addCategory: (kind: "project" | "time", name: string) => void;
   deleteCategory: (kind: "project" | "time", name: string) => void;
+  addRoutine: (category: string, start: string, end: string) => void;
+  updateRoutine: (id: string, patch: Partial<RoutineBlock>) => void;
+  moveRoutine: (id: string, direction: -1 | 1) => void;
+  deleteRoutine: (id: string) => void;
   addLabel: (name: string) => void;
   deleteLabel: (id: string) => void;
   addContact: (contact: Omit<Contact, "id">) => void;
@@ -214,6 +226,7 @@ export const usePlanner = create<State>()(
       boards: makeBoards(PROJECTS),
       labels: LABELS,
       timeCats: TIME,
+      routine: [],
       tasks: [],
       spans: [],
       goals: [{ id: "mission-goal", title: "Финансовая свобода", content: "Чистая прибыль 300 000 ₽ в месяц. Капитал 10 млн. Пассив 100 000 ₽." }],
@@ -349,6 +362,7 @@ export const usePlanner = create<State>()(
           set({
             timeCats: get().timeCats.map((name) => (name === from ? clean : name)),
             spans: get().spans.map((span) => (span.category === from ? { ...span, category: clean } : span)),
+            routine: (get().routine ?? []).map((block) => (block.category === from ? { ...block, category: clean } : block)),
           });
         }
       },
@@ -378,7 +392,12 @@ export const usePlanner = create<State>()(
             projects: get().projects.filter((item) => item !== name),
             boards: get().boards.filter((board) => board.inbox || board.name !== name),
           });
-        } else set({ timeCats: get().timeCats.filter((item) => item !== name) });
+        } else {
+          set({
+            timeCats: get().timeCats.filter((item) => item !== name),
+            routine: (get().routine ?? []).filter((block) => block.category !== name),
+          });
+        }
       },
       addLabel: (name) => {
         const clean = name.trim();
@@ -431,6 +450,25 @@ export const usePlanner = create<State>()(
           burst: get().burst + 1,
         });
       },
+      deleteRoutine: (id) => set({ routine: (get().routine ?? []).filter((block) => block.id !== id) }),
+      addRoutine: (category, start, end) => {
+        const name = category.trim();
+        if (!name || !clockOk(start) || !clockOk(end)) return;
+        set({ routine: [...(get().routine ?? []), { id: uid(), category: name, start, end }] });
+      },
+      updateRoutine: (id, patch) =>
+        set({
+          routine: (get().routine ?? []).map((block) => (block.id === id ? { ...block, ...patch } : block)),
+        }),
+      moveRoutine: (id, direction) => {
+        const list = [...(get().routine ?? [])];
+        const index = list.findIndex((block) => block.id === id);
+        const next = index + direction;
+        if (index < 0 || next < 0 || next >= list.length) return;
+        const [item] = list.splice(index, 1);
+        list.splice(next, 0, item!);
+        set({ routine: list });
+      },
       clearReward: () => set({ reward: null }),
     }),
     {
@@ -444,6 +482,7 @@ export const usePlanner = create<State>()(
           projects,
           boards: saved.boards?.length ? saved.boards : makeBoards(projects),
           labels: saved.labels?.length ? saved.labels : current.labels,
+          routine: saved.routine ?? [],
           burst: 0,
           reward: null,
           undo: null,
@@ -452,6 +491,10 @@ export const usePlanner = create<State>()(
     },
   ),
 );
+
+function clockOk(value: string) {
+  return /^([01]?\d|2[0-3]):[0-5]\d$/.test(value.trim());
+}
 
 function award(xp: number, amount: number, text: string): Pick<State, "xp" | "reward"> {
   const before = levelInfo(xp).level;

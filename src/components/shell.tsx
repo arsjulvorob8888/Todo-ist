@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { BarChart3, Ellipsis, Flag, ListChecks, Sun, Timer, UserRound, Volume2, VolumeX } from "lucide-react";
+import { BarChart3, CalendarClock, Ellipsis, Flag, ListChecks, Sun, Timer, UserRound, Volume2, VolumeX } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { Burst } from "@/components/fx";
 import { cn } from "@/lib/cn";
@@ -13,6 +13,7 @@ const NAV = [
   { to: "/", label: "Сегодня", icon: Sun },
   { to: "/tasks", label: "Задачи", icon: ListChecks },
   { to: "/timing", label: "Тайминг", icon: Timer },
+  { to: "/routine", label: "Распорядок", icon: CalendarClock },
   { to: "/stats", label: "Рост", icon: BarChart3 },
   { to: "/goals", label: "Цели", icon: Flag },
   { to: "/more", label: "Ещё", icon: Ellipsis },

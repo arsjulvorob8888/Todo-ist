@@ -13,6 +13,7 @@ type Profile = {
   scores: Record<string, number>;
   timeCats: string[];
   projects: string[];
+  routine?: { id: string; category: string; start: string; end: string }[];
 };
 type Sent = Record<string, string>;
 type Status = "local" | "offline" | "sync" | "ok";
@@ -71,6 +72,7 @@ function snapshot(state: ReturnType<typeof usePlanner.getState>) {
       scores: state.scores,
       timeCats: state.timeCats,
       projects: state.projects,
+      routine: state.routine ?? [],
     },
   });
   return map;
@@ -115,12 +117,14 @@ function applyRecords(records: SyncChange[]) {
           scores: Record<string, number>;
           timeCats: string[];
           projects: string[];
+          routine?: { id: string; category: string; start: string; end: string }[];
         };
         next.mission = payload.mission;
         next.xp = payload.xp;
         next.scores = payload.scores;
         next.timeCats = payload.timeCats;
         next.projects = payload.projects;
+        if (payload.routine) next.routine = payload.routine;
         sent[key] = JSON.stringify(payload);
         continue;
       }
@@ -176,6 +180,7 @@ function replaceAll(records: SyncChange[]) {
           scores: profile.scores ?? {},
           timeCats: profile.timeCats ?? usePlanner.getState().timeCats,
           projects: profile.projects ?? usePlanner.getState().projects,
+          routine: profile.routine ?? usePlanner.getState().routine,
         }
       : {}),
   } as Partial<ReturnType<typeof usePlanner.getState>>);

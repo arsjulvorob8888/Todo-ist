@@ -13,9 +13,11 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AccountRouteImport } from './routes/account'
 import { Route as GoalsRouteImport } from './routes/goals'
 import { Route as MoreRouteImport } from './routes/more'
+import { Route as RoutineRouteImport } from './routes/routine'
 import { Route as StatsRouteImport } from './routes/stats'
 import { Route as TasksRouteImport } from './routes/tasks'
 import { Route as TimingRouteImport } from './routes/timing'
+import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -37,6 +39,11 @@ const MoreRoute = MoreRouteImport.update({
   path: '/more',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RoutineRoute = RoutineRouteImport.update({
+  id: '/routine',
+  path: '/routine',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const StatsRoute = StatsRouteImport.update({
   id: '/stats',
   path: '/stats',
@@ -52,24 +59,33 @@ const TimingRoute = TimingRouteImport.update({
   path: '/timing',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
+  id: '/api/auth/$',
+  path: '/api/auth/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
   '/goals': typeof GoalsRoute
   '/more': typeof MoreRoute
+  '/routine': typeof RoutineRoute
   '/stats': typeof StatsRoute
   '/tasks': typeof TasksRoute
   '/timing': typeof TimingRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
   '/goals': typeof GoalsRoute
   '/more': typeof MoreRoute
+  '/routine': typeof RoutineRoute
   '/stats': typeof StatsRoute
   '/tasks': typeof TasksRoute
   '/timing': typeof TimingRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -77,25 +93,46 @@ export interface FileRoutesById {
   '/account': typeof AccountRoute
   '/goals': typeof GoalsRoute
   '/more': typeof MoreRoute
+  '/routine': typeof RoutineRoute
   '/stats': typeof StatsRoute
   '/tasks': typeof TasksRoute
   '/timing': typeof TimingRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/account' | '/goals' | '/more' | '/stats' | '/tasks' | '/timing'
+    | '/'
+    | '/account'
+    | '/goals'
+    | '/more'
+    | '/routine'
+    | '/stats'
+    | '/tasks'
+    | '/timing'
+    | '/api/auth/$'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/account' | '/goals' | '/more' | '/stats' | '/tasks' | '/timing'
+  to:
+    | '/'
+    | '/account'
+    | '/goals'
+    | '/more'
+    | '/routine'
+    | '/stats'
+    | '/tasks'
+    | '/timing'
+    | '/api/auth/$'
   id:
     | '__root__'
     | '/'
     | '/account'
     | '/goals'
     | '/more'
+    | '/routine'
     | '/stats'
     | '/tasks'
     | '/timing'
+    | '/api/auth/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -103,9 +140,11 @@ export interface RootRouteChildren {
   AccountRoute: typeof AccountRoute
   GoalsRoute: typeof GoalsRoute
   MoreRoute: typeof MoreRoute
+  RoutineRoute: typeof RoutineRoute
   StatsRoute: typeof StatsRoute
   TasksRoute: typeof TasksRoute
   TimingRoute: typeof TimingRoute
+  ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -138,6 +177,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MoreRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/routine': {
+      id: '/routine'
+      path: '/routine'
+      fullPath: '/routine'
+      preLoaderRoute: typeof RoutineRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/stats': {
       id: '/stats'
       path: '/stats'
@@ -159,6 +205,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TimingRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/auth/$': {
+      id: '/api/auth/$'
+      path: '/api/auth/$'
+      fullPath: '/api/auth/$'
+      preLoaderRoute: typeof ApiAuthSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -167,9 +220,11 @@ const rootRouteChildren: RootRouteChildren = {
   AccountRoute: AccountRoute,
   GoalsRoute: GoalsRoute,
   MoreRoute: MoreRoute,
+  RoutineRoute: RoutineRoute,
   StatsRoute: StatsRoute,
   TasksRoute: TasksRoute,
   TimingRoute: TimingRoute,
+  ApiAuthSplatRoute: ApiAuthSplatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
