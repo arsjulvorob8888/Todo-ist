@@ -6,6 +6,7 @@ import { cn } from "@/lib/cn";
 import { fmtSpan } from "@/lib/dates";
 import { playBell, playLevel, playWin, playXp, setSoundEnabled } from "@/lib/sound";
 import { startSync, useSyncStatus } from "@/lib/sync";
+import { restoreIfBlank, startBackup } from "@/lib/backup";
 import { recoverIfEmpty } from "@/lib/recovery";
 import { usePlanner } from "@/lib/store";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
@@ -47,7 +48,11 @@ function Ready({ children }: { children: ReactNode }) {
   const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
-    startSync();
+    void (async () => {
+      await restoreIfBlank();
+      startBackup();
+      startSync();
+    })();
     if (import.meta.env.PROD && "serviceWorker" in navigator) {
       void navigator.serviceWorker.register("/sw.js");
     }

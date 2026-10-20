@@ -4,6 +4,7 @@ import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { mailReady } from "@/lib/auth/mail.functions";
 import { inputClass } from "@/components/modal";
 import { DesktopDownload } from "@/components/desktop-download";
+import { BACKUP_FILE, backupFolderName, chooseBackupFolder, downloadBackup, latestBackup, restoreBackupFile } from "@/lib/backup";
 import { syncNow, useSyncStatus } from "@/lib/sync";
 
 export function AccountView() {
@@ -34,6 +35,7 @@ export function AccountView() {
         <p className="text-sm text-mist">Один план на время беты ToDO-AKA. Проекты, метки, помидор и синхронизация телефона с компьютером — без оплаты.</p>
       </article>
       <DesktopDownload />
+      <BackupCard />
       <p className="mt-4 text-sm text-mist">Связь: {statusText(status)}. Без интернета всё остаётся на устройстве и уходит на сервер, когда сеть вернётся.</p>
       <button type="button" className="mt-3 rounded-full bg-panel-2 px-4 py-2 text-sm" onClick={() => void syncNow()}>
         Синхронизировать
@@ -190,6 +192,77 @@ function GoogleMark() {
       <path fill="#FBBC05" d="M3.9 10.7A5.4 5.4 0 0 1 3.6 9c0-.6.1-1.2.3-1.7V5H.9A9 9 0 0 0 0 9c0 1.4.3 2.8.9 4l3-2.3z" />
       <path fill="#EA4335" d="M9 3.6c1.3 0 2.5.5 3.4 1.3L15.1 2A9 9 0 0 0 .9 5l3 2.3C4.6 5.2 6.6 3.6 9 3.6z" />
     </svg>
+  );
+}
+
+function BackupCard() {
+  const [folder, setFolder] = useState("");
+  const [savedAt, setSavedAt] = useState("");
+  const [note, setNote] = useState("");
+
+  useEffect(() => {
+    void backupFolderName().then(setFolder);
+    void latestBackup().then((snap) => setSavedAt(snap?.savedAt ?? ""));
+  }, []);
+
+  return (
+    <article className="mt-4 rounded-card border border-line bg-panel p-4">
+      <p className="text-xs tracking-wide text-gold uppercase">Резервная копия</p>
+      <p className="mt-2 font-display text-2xl">Файл {BACKUP_FILE}</p>
+      <p className="mt-2 text-sm text-mist">
+        {folder
+          ? `Он лежит в папке «${folder}», которую ты выбрал. Ищи файл с этим именем.`
+          : "Папка ещё не выбрана. Нажми «Запомнить папку» и укажи, например, Документы. После этого файл будет обновляться сам."}
+      </p>
+      <p className="mt-2 text-sm text-mist">
+        Кнопка «Скачать файл» кладёт такую же копию в папку «Загрузки». Отдельно в браузере хранятся последние 20 автоматических копий. Пустой экран их не стирает.
+        {savedAt ? ` Последняя: ${new Date(savedAt).toLocaleString("ru")}.` : ""}
+      </p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <button
+          type="button"
+          className="rounded-full bg-gold px-4 py-2 text-sm text-ink"
+          onClick={() => {
+            setNote("");
+            void chooseBackupFolder()
+              .then((name) => {
+                setFolder(name);
+                setNote(`Записал файл в папку «${name}».`);
+              })
+              .catch((error: unknown) => setNote(error instanceof Error ? error.message : "Папку выбрать не удалось"));
+          }}
+        >
+          Запомнить папку
+        </button>
+        <button
+          type="button"
+          className="rounded-full bg-panel-2 px-4 py-2 text-sm"
+          onClick={() => {
+            downloadBackup();
+            setNote("Файл скачан. Он в папке «Загрузки».");
+          }}
+        >
+          Скачать файл
+        </button>
+        <label className="cursor-pointer rounded-full bg-panel-2 px-4 py-2 text-sm">
+          Восстановить из файла
+          <input
+            type="file"
+            accept="application/json,.json"
+            className="hidden"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              event.target.value = "";
+              if (!file) return;
+              void restoreBackupFile(file)
+                .then(() => setNote("Данные из файла возвращены."))
+                .catch((error: unknown) => setNote(error instanceof Error ? error.message : "Файл не подошёл"));
+            }}
+          />
+        </label>
+      </div>
+      {note ? <p className="mt-3 text-sm text-gold">{note}</p> : null}
+    </article>
   );
 }
 
