@@ -5,6 +5,8 @@ import { playStart } from "@/lib/sound";
 import { usePlanner, type Board, type Mark, type Priority, type Task } from "@/lib/store";
 
 const PRIORITIES: Priority[] = ["Срочно", "Высокий", "Средний", "Низкий"];
+const OPEN = "Все кроме выполнено";
+const STATUSES = [OPEN, "Все", "В ожидании", "В процессе", "Выполнено"];
 
 export function TasksView() {
   const tasks = usePlanner((s) => s.tasks);
@@ -19,7 +21,7 @@ export function TasksView() {
   const startPomo = usePlanner((s) => s.startPomo);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Task | null>(null);
-  const [filter, setFilter] = useState("Все");
+  const [filter, setFilter] = useState(OPEN);
   const [priority, setPriority] = useState("Все");
   const [due, setDue] = useState("Все");
   const [project, setProject] = useState("Все");
@@ -33,7 +35,8 @@ export function TasksView() {
   }, []);
 
   const visible = tasks.filter((task) => {
-    if (filter !== "Все" && task.status !== filter) return false;
+    if (filter === OPEN && task.status === "Выполнено") return false;
+    if (filter !== "Все" && filter !== OPEN && task.status !== filter) return false;
     if (priority !== "Все" && task.priority !== priority) return false;
     if (!matchesDue(task, due)) return false;
     if (project !== "Все" && task.projectId !== project && task.project !== project) return false;
@@ -42,7 +45,7 @@ export function TasksView() {
   });
 
   function resetFilters() {
-    setFilter("Все");
+    setFilter(OPEN);
     setPriority("Все");
     setDue("Все");
     setProject("Все");
@@ -61,7 +64,7 @@ export function TasksView() {
         </button>
       </header>
       <div className="mb-4 flex flex-wrap gap-2">
-        {["Все", "В ожидании", "В процессе", "Выполнено"].map((name) => (
+        {STATUSES.map((name) => (
           <button
             key={name}
             type="button"
@@ -129,7 +132,7 @@ export function TasksView() {
         <label className="text-xs tracking-wide text-mist uppercase">
           Статус
           <select className={inputClass + " mt-1"} value={filter} onChange={(event) => setFilter(event.target.value)}>
-            {["Все", "В ожидании", "В процессе", "Выполнено"].map((name) => (
+            {STATUSES.map((name) => (
               <option key={name}>{name}</option>
             ))}
           </select>
@@ -183,7 +186,7 @@ export function TasksView() {
           onClose={() => setOpen(false)}
           onSave={(task) => {
             addTask(task);
-            setFilter("Все");
+            setFilter(OPEN);
             setPriority("Все");
             setDue("Все");
             setProject("Все");
