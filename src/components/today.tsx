@@ -3,6 +3,7 @@ import { Flame, Zap } from "lucide-react";
 import { useEffect, useState } from "react";
 import { ScorePips } from "@/components/score-pips";
 import { dayKey, fmtHm, fmtSpan, formatDay } from "@/lib/dates";
+import { quoteForNow } from "@/lib/quotes";
 import { playStart, playTap } from "@/lib/sound";
 import { dayScore, levelInfo, spanSeconds, streakCount, usePlanner, type Pomo, type Task } from "@/lib/store";
 
@@ -40,6 +41,13 @@ export function Today() {
     .slice(0, 5);
   const level = levelInfo(xp);
   const streak = streakCount(tasks, spans);
+  const [thought, setThought] = useState<ReturnType<typeof quoteForNow> | null>(null);
+  useEffect(() => {
+    const refresh = () => setThought(quoteForNow());
+    refresh();
+    const id = window.setInterval(refresh, 60_000);
+    return () => window.clearInterval(id);
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -49,6 +57,19 @@ export function Today() {
       </header>
 
       <section className="grid gap-3 md:grid-cols-3">
+        <div className="grid gap-3 md:col-span-2">
+          <article className="rounded-card border border-gold/40 bg-panel p-5">
+            <p className="text-xs tracking-wide text-gold uppercase">{thought?.period ?? "Мысль"}</p>
+            {thought ? (
+              <>
+                <blockquote className="mt-2 font-display text-2xl leading-snug text-cream md:text-3xl">«{thought.text}»</blockquote>
+                <p className="mt-3 text-sm text-mist">{thought.author}</p>
+              </>
+            ) : (
+              <p className="mt-3 h-16 text-mist">...</p>
+            )}
+          </article>
+          <div className="grid gap-3 sm:grid-cols-2">
         <article className="rounded-card border border-line bg-panel p-4">
           <div className="flex items-center gap-2 text-ember">
             <Flame className="size-5" />
@@ -70,7 +91,9 @@ export function Today() {
             {level.into} / {level.need} до следующего
           </p>
         </article>
-        <article className="flex items-center gap-4 rounded-card border border-line bg-panel p-4">
+          </div>
+        </div>
+        <article className="flex h-full items-center gap-4 rounded-card border border-line bg-panel p-4">
           <Rings time={Math.min(1, seconds / (8 * 3600))} tasks={Math.min(1, done / 3)} pomos={Math.min(1, pomos / 4)} />
           <div className="text-sm text-mist">
             <p>
