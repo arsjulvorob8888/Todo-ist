@@ -41,7 +41,16 @@ export type RoutineBlock = {
   end: string;
 };
 
-export type Goal = { id: string; title: string; content: string };
+export type Kpi = { id: string; name: string; target: number; current: number; unit: string };
+export type Goal = {
+  id: string;
+  title: string;
+  content: string;
+  deadline?: string;
+  done?: boolean;
+  percent?: number;
+  kpis?: Kpi[];
+};
 export type Contact = { id: string; name: string; group: string; birthday: string };
 export type Idea = { id: string; title: string; note: string };
 export type Book = { id: string; title: string; author: string; date: string };
@@ -193,8 +202,9 @@ type State = {
   deleteSpan: (id: string) => void;
   addManualSpan: (category: string, day: string, start: string, end: string) => void;
   setScore: (day: string, score: number) => void;
-  addGoal: (title: string) => void;
-  updateGoal: (id: string, content: string) => void;
+  addGoal: (goal: Omit<Goal, "id" | "done"> & { done?: boolean }) => void;
+  updateGoal: (id: string, patch: Partial<Goal>) => void;
+  toggleGoal: (id: string) => void;
   deleteGoal: (id: string) => void;
   renameCategory: (kind: "project" | "time", from: string, to: string) => void;
   addCategory: (kind: "project" | "time", name: string) => void;
@@ -358,8 +368,24 @@ export const usePlanner = create<State>()(
           spans: [...get().spans, { id: uid(), day, category, start, end }],
         }),
       setScore: (day, score) => set({ scores: { ...get().scores, [day]: score } }),
-      addGoal: (title) => set({ goals: [...get().goals, { id: uid(), title, content: "" }] }),
-      updateGoal: (id, content) => set({ goals: get().goals.map((g) => (g.id === id ? { ...g, content } : g)) }),
+      addGoal: (goal) =>
+        set({
+          goals: [
+            ...get().goals,
+            {
+              id: uid(),
+              title: goal.title.trim(),
+              content: goal.content ?? "",
+              deadline: goal.deadline ?? "",
+              done: false,
+              percent: goal.percent ?? 0,
+              kpis: goal.kpis ?? [],
+            },
+          ],
+        }),
+      updateGoal: (id, patch) => set({ goals: get().goals.map((goal) => (goal.id === id ? { ...goal, ...patch } : goal)) }),
+      toggleGoal: (id) =>
+        set({ goals: get().goals.map((goal) => (goal.id === id ? { ...goal, done: !goal.done } : goal)) }),
       deleteGoal: (id) => set({ goals: get().goals.filter((g) => g.id !== id) }),
       renameCategory: (kind, from, to) => {
         const clean = to.trim();
