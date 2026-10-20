@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { Field, inputClass, Modal } from "@/components/modal";
 import { ScorePips } from "@/components/score-pips";
 import { addDays, clock, dayKey, fmtHm, fmtSpan, formatDay } from "@/lib/dates";
@@ -12,9 +13,11 @@ export function TimingView() {
   const stopSpan = usePlanner((s) => s.stopSpan);
   const deleteSpan = usePlanner((s) => s.deleteSpan);
   const updateSpan = usePlanner((s) => s.updateSpan);
+  const moveSpan = usePlanner((s) => s.moveSpan);
   const addManualSpan = usePlanner((s) => s.addManualSpan);
   const [day, setDay] = useState(dayKey());
   const [manual, setManual] = useState(false);
+  const [editId, setEditId] = useState("");
   const [ask, setAsk] = useState<{ category: string; mode: "start" | "stop" } | null>(null);
   const [askTime, setAskTime] = useState("12:00");
   const [, setTick] = useState(0);
@@ -24,7 +27,7 @@ export function TimingView() {
     return () => window.clearInterval(id);
   }, []);
 
-  const daySpans = spans.filter((span) => span.day === day).sort((a, b) => a.start.localeCompare(b.start));
+  const daySpans = spans.filter((span) => span.day === day).sort(byPlace);
   const open = daySpans.find((span) => !span.end);
   const totals = new Map<string, number>();
   for (const span of daySpans) totals.set(span.category, (totals.get(span.category) ?? 0) + spanSeconds(span));
@@ -105,14 +108,45 @@ export function TimingView() {
             </button>
           </div>
           <ul className="space-y-2">
-            {daySpans.map((span) => (
+            {daySpans.map((span, index) => (
               <li key={span.id} className="rounded-2xl border border-line bg-panel px-3 py-3">
-                <div className="flex items-center gap-3">
-                  <span className="w-28 text-sm text-mist">
-                    {clock(span.start)} – {span.end ? clock(span.end) : "идёт"}
+                <div className="flex items-center gap-2">
+                  <span className="flex flex-col">
+                    <button
+                      type="button"
+                      title="Выше"
+                      disabled={index === 0}
+                      className="text-gold disabled:opacity-30"
+                      onClick={() => {
+                        playTap();
+                        moveSpan(span.id, -1);
+                      }}
+                    >
+                      <ChevronUp className="size-4" />
+                    </button>
+                    <button
+                      type="button"
+                      title="Ниже"
+                      disabled={index === daySpans.length - 1}
+                      className="text-gold disabled:opacity-30"
+                      onClick={() => {
+                        playTap();
+                        moveSpan(span.id, 1);
+                      }}
+                    >
+                      <ChevronDown className="size-4" />
+                    </button>
                   </span>
-                  <span className="flex-1">{span.category}</span>
+                  <button type="button" className="w-28 text-left text-sm text-mist" onClick={() => setEditId(span.id)}>
+                    {clock(span.start)} – {span.end ? clock(span.end) : "идёт"}
+                  </button>
+                  <button type="button" className="flex-1 text-left" onClick={() => setEditId(span.id)}>
+                    {span.category}
+                  </button>
                   <span className="text-gold">{fmtSpan(spanSeconds(span))}</span>
+                  <button type="button" className="text-sm text-gold" onClick={() => setEditId(span.id)}>
+                    Изменить
+                  </button>
                   <button type="button" className="text-sm text-ember" onClick={() => { playTap(); deleteSpan(span.id); }}>
                     Удалить
                   </button>
@@ -152,6 +186,17 @@ export function TimingView() {
           </p>
         </aside>
       </div>
+      {editId ? (
+        <EditSpan
+          span={spans.find((span) => span.id === editId)}
+          categories={timeCats}
+          onClose={() => setEditId("")}
+          onSave={(patch) => {
+            updateSpan(editId, patch);
+            setEditId("");
+          }}
+        />
+      ) : null}
       {ask ? (
         <Modal title={ask.mode === "start" ? "Начало" : "Окончание"} onClose={() => setAsk(null)}>
           <Field label="Время, часы и минуты">
@@ -189,8 +234,84 @@ export function TimingView() {
   );
 }
 
-function combine(day: string, hhmm: string) {
-  const match = /^(\d{1,2}):(\d{2})$/.exec(hhmm.trim());
+function byPlace(a: { order?: number; start: string }, b: { order?: number; start: string }) {
+  const left = a.order ?? Date.parse(a.start);
+  const right = b.order ?? Date.parse(b.start);
+  if (left !== right) return left - right;
+  return a.start.localeCompare(b.start);
+}
+
+function hhmm(iso: string) {
+  if (!iso) return "";
+  const date = new Date(iso);
+  return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+}
+
+function EditSpan({
+  span,
+  categories,
+  onClose,
+  onSave,
+}: {
+  span: { category: string; start: string; end: string } | undefined;
+  categories: string[];
+  onClose: () => void;
+  onSave: (patch: { category: string; start: string; end: string }) => void;
+}) {
+  const [category, setCategory] = useState(span?.category ?? categories[0] ?? "");
+  const [start, setStart] = useState(span ? hhmm(span.start) : "09:00");
+  const [end, setEnd] = useState(span?.end ? hhmm(span.end) : "");
+  const [error, setError] = useState("");
+  if (!span) return null;
+  return (
+    <Modal title="Интервал" onClose={onClose}>
+      <Field label="Категория">
+        <select className={inputClass} value={category} onChange={(event) => setCategory(event.target.value)}>
+          {categories.map((name) => (
+            <option key={name}>{name}</option>
+          ))}
+          {category && !categories.includes(category) ? <option>{category}</option> : null}
+        </select>
+      </Field>
+      <Field label="Начало">
+        <input className={inputClass} value={start} onChange={(event) => setStart(event.target.value)} />
+      </Field>
+      <Field label="Конец, пусто если ещё идёт">
+        <input className={inputClass} value={end} onChange={(event) => setEnd(event.target.value)} />
+      </Field>
+      {error ? <p className="text-sm text-ember">{error}</p> : null}
+      <button
+        type="button"
+        className="w-full rounded-full bg-gold py-3 text-ink"
+        onClick={() => {
+          const nextStart = combine(dayFromIso(span.start), start);
+          const nextEnd = end.trim() ? combine(dayFromIso(span.start), end) : "";
+          if (!nextStart || (end.trim() && !nextEnd)) {
+            setError("Время в формате 08:30");
+            return;
+          }
+          if (nextEnd && new Date(nextEnd) <= new Date(nextStart)) {
+            setError("Конец должен быть позже начала");
+            return;
+          }
+          onSave({ category, start: nextStart, end: nextEnd });
+        }}
+      >
+        Сохранить
+      </button>
+    </Modal>
+  );
+}
+
+function dayFromIso(iso: string) {
+  const date = new Date(iso);
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+
+function combine(day: string, hhmmValue: string) {
+  const match = /^(\d{1,2}):(\d{2})$/.exec(hhmmValue.trim());
   if (!match) return "";
   const hours = Number(match[1]);
   const minutes = Number(match[2]);

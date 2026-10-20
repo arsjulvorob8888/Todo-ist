@@ -31,6 +31,7 @@ export type Span = {
   start: string;
   end: string;
   score?: number;
+  order?: number;
 };
 
 export type Goal = { id: string; title: string; content: string };
@@ -171,6 +172,7 @@ type State = {
   startSpan: (category: string, at?: string) => void;
   stopSpan: (day: string, at?: string) => void;
   updateSpan: (id: string, patch: Partial<Span>) => void;
+  moveSpan: (id: string, direction: -1 | 1) => void;
   deleteSpan: (id: string) => void;
   addManualSpan: (category: string, day: string, start: string, end: string) => void;
   setScore: (day: string, score: number) => void;
@@ -307,6 +309,23 @@ export const usePlanner = create<State>()(
         const scored = typeof patch.score === "number" && prev && prev.score !== patch.score;
         const gained = scored ? award(get().xp, 2, `Оценка ${patch.score}`) : {};
         set({ spans, ...gained, ...(scored ? { burst: get().burst + 1 } : {}) });
+      },
+      moveSpan: (id, direction) => {
+        const all = get().spans;
+        const span = all.find((item) => item.id === id);
+        if (!span) return;
+        const dayList = all
+          .filter((item) => item.day === span.day)
+          .sort((a, b) => (a.order ?? Date.parse(a.start)) - (b.order ?? Date.parse(b.start)) || a.start.localeCompare(b.start));
+        const index = dayList.findIndex((item) => item.id === id);
+        const next = index + direction;
+        if (index < 0 || next < 0 || next >= dayList.length) return;
+        const ids = dayList.map((item) => item.id);
+        [ids[index], ids[next]] = [ids[next]!, ids[index]!];
+        const rank = new Map(ids.map((itemId, place) => [itemId, place]));
+        set({
+          spans: all.map((item) => (item.day === span.day ? { ...item, order: rank.get(item.id) ?? item.order } : item)),
+        });
       },
       deleteSpan: (id) => set({ spans: get().spans.filter((span) => span.id !== id) }),
       addManualSpan: (category, day, start, end) =>
