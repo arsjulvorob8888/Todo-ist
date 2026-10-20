@@ -1,4 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { MoreView } from "@/components/more-view";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
-export const Route = createFileRoute("/more")({ component: MoreView });
+export const Route = createFileRoute("/more")({
+  beforeLoad: () => {
+    throw redirect({ to: "/time" });
+  },
+});

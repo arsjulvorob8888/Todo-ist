@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { BarChart3, CalendarClock, Ellipsis, Flag, ListChecks, Sun, Timer, UserRound, Volume2, VolumeX } from "lucide-react";
+import { BarChart3, BookOpen, CalendarClock, Clock, Flag, FolderKanban, Lightbulb, ListChecks, Sun, Timer, UserRound, Users, Volume2, VolumeX } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { Burst } from "@/components/fx";
 import { cn } from "@/lib/cn";
@@ -16,7 +16,11 @@ const NAV = [
   { to: "/routine", label: "Распорядок", icon: CalendarClock },
   { to: "/stats", label: "Рост", icon: BarChart3 },
   { to: "/goals", label: "Цели", icon: Flag },
-  { to: "/more", label: "Ещё", icon: Ellipsis },
+  { to: "/time", label: "Время", icon: Clock },
+  { to: "/projects", label: "Проекты", icon: FolderKanban },
+  { to: "/people", label: "Люди", icon: Users },
+  { to: "/ideas", label: "Идеи", icon: Lightbulb },
+  { to: "/books", label: "Книги", icon: BookOpen },
   { to: "/account", label: "Кабинет", icon: UserRound },
 ] as const;
 
@@ -91,6 +95,7 @@ function Ready({ children }: { children: ReactNode }) {
         <Link to="/account" className="mb-4" aria-label="Аккаунт">
           <AccountMark />
         </Link>
+        <nav className="flex min-h-0 w-full flex-1 flex-col items-center gap-1 overflow-y-auto">
         {NAV.map((item) => {
           const active = item.to === "/" ? path === "/" : path.startsWith(item.to);
           const Icon = item.icon;
@@ -108,7 +113,8 @@ function Ready({ children }: { children: ReactNode }) {
             </Link>
           );
         })}
-        <button type="button" onClick={toggleSound} className="mt-auto text-mist hover:text-cream" aria-label="Звук">
+        </nav>
+        <button type="button" onClick={toggleSound} className="mt-2 text-mist hover:text-cream" aria-label="Звук">
           {sound ? <Volume2 className="size-5" /> : <VolumeX className="size-5" />}
         </button>
       </aside>
@@ -160,15 +166,18 @@ function Ready({ children }: { children: ReactNode }) {
 
       {burst > 0 ? <Burst nonce={burst} /> : null}
 
-      <nav className="fixed inset-x-0 bottom-0 z-20 flex border-t border-line bg-panel md:hidden">
-        {NAV.filter((item) => item.to !== "/goals").map((item) => {
+      <nav className="fixed inset-x-0 bottom-0 z-20 flex gap-1 overflow-x-auto border-t border-line bg-panel px-1 md:hidden">
+        {NAV.map((item) => {
           const active = item.to === "/" ? path === "/" : path.startsWith(item.to);
           const Icon = item.icon;
           return (
             <Link
               key={item.to}
               to={item.to}
-              className={cn("flex flex-1 flex-col items-center gap-1 py-2 text-[10px]", active ? "text-gold" : "text-mist")}
+              className={cn(
+                "flex w-16 shrink-0 flex-col items-center gap-1 py-2 text-[10px]",
+                active ? "text-gold" : "text-mist",
+              )}
             >
               <Icon className="size-5" />
               {item.label}

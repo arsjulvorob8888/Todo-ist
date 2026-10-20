@@ -11,11 +11,16 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AccountRouteImport } from './routes/account'
+import { Route as BooksRouteImport } from './routes/books'
 import { Route as GoalsRouteImport } from './routes/goals'
+import { Route as IdeasRouteImport } from './routes/ideas'
 import { Route as MoreRouteImport } from './routes/more'
+import { Route as PeopleRouteImport } from './routes/people'
+import { Route as ProjectsRouteImport } from './routes/projects'
 import { Route as RoutineRouteImport } from './routes/routine'
 import { Route as StatsRouteImport } from './routes/stats'
 import { Route as TasksRouteImport } from './routes/tasks'
+import { Route as TimeRouteImport } from './routes/time'
 import { Route as TimingRouteImport } from './routes/timing'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
@@ -29,14 +34,34 @@ const AccountRoute = AccountRouteImport.update({
   path: '/account',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BooksRoute = BooksRouteImport.update({
+  id: '/books',
+  path: '/books',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const GoalsRoute = GoalsRouteImport.update({
   id: '/goals',
   path: '/goals',
   getParentRoute: () => rootRouteImport,
 } as any)
+const IdeasRoute = IdeasRouteImport.update({
+  id: '/ideas',
+  path: '/ideas',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MoreRoute = MoreRouteImport.update({
   id: '/more',
   path: '/more',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PeopleRoute = PeopleRouteImport.update({
+  id: '/people',
+  path: '/people',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProjectsRoute = ProjectsRouteImport.update({
+  id: '/projects',
+  path: '/projects',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RoutineRoute = RoutineRouteImport.update({
@@ -54,6 +79,11 @@ const TasksRoute = TasksRouteImport.update({
   path: '/tasks',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TimeRoute = TimeRouteImport.update({
+  id: '/time',
+  path: '/time',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TimingRoute = TimingRouteImport.update({
   id: '/timing',
   path: '/timing',
@@ -68,22 +98,32 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
+  '/books': typeof BooksRoute
   '/goals': typeof GoalsRoute
+  '/ideas': typeof IdeasRoute
   '/more': typeof MoreRoute
+  '/people': typeof PeopleRoute
+  '/projects': typeof ProjectsRoute
   '/routine': typeof RoutineRoute
   '/stats': typeof StatsRoute
   '/tasks': typeof TasksRoute
+  '/time': typeof TimeRoute
   '/timing': typeof TimingRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
+  '/books': typeof BooksRoute
   '/goals': typeof GoalsRoute
+  '/ideas': typeof IdeasRoute
   '/more': typeof MoreRoute
+  '/people': typeof PeopleRoute
+  '/projects': typeof ProjectsRoute
   '/routine': typeof RoutineRoute
   '/stats': typeof StatsRoute
   '/tasks': typeof TasksRoute
+  '/time': typeof TimeRoute
   '/timing': typeof TimingRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
@@ -91,11 +131,16 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
+  '/books': typeof BooksRoute
   '/goals': typeof GoalsRoute
+  '/ideas': typeof IdeasRoute
   '/more': typeof MoreRoute
+  '/people': typeof PeopleRoute
+  '/projects': typeof ProjectsRoute
   '/routine': typeof RoutineRoute
   '/stats': typeof StatsRoute
   '/tasks': typeof TasksRoute
+  '/time': typeof TimeRoute
   '/timing': typeof TimingRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
@@ -104,33 +149,48 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/account'
+    | '/books'
     | '/goals'
+    | '/ideas'
     | '/more'
+    | '/people'
+    | '/projects'
     | '/routine'
     | '/stats'
     | '/tasks'
+    | '/time'
     | '/timing'
     | '/api/auth/$'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/account'
+    | '/books'
     | '/goals'
+    | '/ideas'
     | '/more'
+    | '/people'
+    | '/projects'
     | '/routine'
     | '/stats'
     | '/tasks'
+    | '/time'
     | '/timing'
     | '/api/auth/$'
   id:
     | '__root__'
     | '/'
     | '/account'
+    | '/books'
     | '/goals'
+    | '/ideas'
     | '/more'
+    | '/people'
+    | '/projects'
     | '/routine'
     | '/stats'
     | '/tasks'
+    | '/time'
     | '/timing'
     | '/api/auth/$'
   fileRoutesById: FileRoutesById
@@ -138,11 +198,16 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AccountRoute: typeof AccountRoute
+  BooksRoute: typeof BooksRoute
   GoalsRoute: typeof GoalsRoute
+  IdeasRoute: typeof IdeasRoute
   MoreRoute: typeof MoreRoute
+  PeopleRoute: typeof PeopleRoute
+  ProjectsRoute: typeof ProjectsRoute
   RoutineRoute: typeof RoutineRoute
   StatsRoute: typeof StatsRoute
   TasksRoute: typeof TasksRoute
+  TimeRoute: typeof TimeRoute
   TimingRoute: typeof TimingRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
@@ -163,6 +228,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AccountRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/books': {
+      id: '/books'
+      path: '/books'
+      fullPath: '/books'
+      preLoaderRoute: typeof BooksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/goals': {
       id: '/goals'
       path: '/goals'
@@ -170,11 +242,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GoalsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/ideas': {
+      id: '/ideas'
+      path: '/ideas'
+      fullPath: '/ideas'
+      preLoaderRoute: typeof IdeasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/more': {
       id: '/more'
       path: '/more'
       fullPath: '/more'
       preLoaderRoute: typeof MoreRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/people': {
+      id: '/people'
+      path: '/people'
+      fullPath: '/people'
+      preLoaderRoute: typeof PeopleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/projects': {
+      id: '/projects'
+      path: '/projects'
+      fullPath: '/projects'
+      preLoaderRoute: typeof ProjectsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/routine': {
@@ -198,6 +291,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TasksRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/time': {
+      id: '/time'
+      path: '/time'
+      fullPath: '/time'
+      preLoaderRoute: typeof TimeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/timing': {
       id: '/timing'
       path: '/timing'
@@ -218,11 +318,16 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AccountRoute: AccountRoute,
+  BooksRoute: BooksRoute,
   GoalsRoute: GoalsRoute,
+  IdeasRoute: IdeasRoute,
   MoreRoute: MoreRoute,
+  PeopleRoute: PeopleRoute,
+  ProjectsRoute: ProjectsRoute,
   RoutineRoute: RoutineRoute,
   StatsRoute: StatsRoute,
   TasksRoute: TasksRoute,
+  TimeRoute: TimeRoute,
   TimingRoute: TimingRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
 }

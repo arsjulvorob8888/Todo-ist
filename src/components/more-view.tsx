@@ -1,9 +1,16 @@
 import { useState } from "react";
-import { DesktopDownload } from "@/components/desktop-download";
 import { Field, inputClass, Modal } from "@/components/modal";
 import { usePlanner } from "@/lib/store";
 
-export function MoreView() {
+const TITLES = {
+  time: "Время",
+  project: "Проекты",
+  people: "Люди",
+  ideas: "Идеи",
+  books: "Книги",
+} as const;
+
+export function LibraryView({ section }: { section: keyof typeof TITLES }) {
   const projects = usePlanner((s) => s.projects);
   const timeCats = usePlanner((s) => s.timeCats);
   const addCategory = usePlanner((s) => s.addCategory);
@@ -15,44 +22,22 @@ export function MoreView() {
   const addContact = usePlanner((s) => s.addContact);
   const addIdea = usePlanner((s) => s.addIdea);
   const addBook = usePlanner((s) => s.addBook);
-  const [tab, setTab] = useState<"time" | "project" | "people" | "ideas" | "books">("time");
 
   return (
     <div>
       <header className="mb-4">
-        <p className="text-sm text-mist">Справочники</p>
-        <h1 className="font-display text-4xl">Ещё</h1>
+        <p className="text-sm text-mist">Справочник</p>
+        <h1 className="font-display text-4xl">{TITLES[section]}</h1>
       </header>
-      <DesktopDownload />
-      <div className="mb-4 flex flex-wrap gap-2">
-        {(
-          [
-            ["time", "Время"],
-            ["project", "Проекты"],
-            ["people", "Люди"],
-            ["ideas", "Идеи"],
-            ["books", "Книги"],
-          ] as const
-        ).map(([id, label]) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => setTab(id)}
-            className={`rounded-full px-3 py-2 text-sm ${tab === id ? "bg-gold text-ink" : "bg-panel text-mist"}`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-      {tab === "time" ? (
+      {section === "time" ? (
         <Cats kind="time" names={timeCats} onAdd={addCategory} onRename={renameCategory} onDelete={deleteCategory} />
       ) : null}
-      {tab === "project" ? (
+      {section === "project" ? (
         <Cats kind="project" names={projects} onAdd={addCategory} onRename={renameCategory} onDelete={deleteCategory} />
       ) : null}
-      {tab === "people" ? <People contacts={contacts} onAdd={addContact} /> : null}
-      {tab === "ideas" ? <Ideas ideas={ideas} onAdd={addIdea} /> : null}
-      {tab === "books" ? <Books books={books} onAdd={addBook} /> : null}
+      {section === "people" ? <People contacts={contacts} onAdd={addContact} /> : null}
+      {section === "ideas" ? <Ideas ideas={ideas} onAdd={addIdea} /> : null}
+      {section === "books" ? <Books books={books} onAdd={addBook} /> : null}
     </div>
   );
 }
