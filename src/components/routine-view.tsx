@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { useRef, useState } from "react";
+import { ChevronDown, ChevronUp, GripVertical } from "lucide-react";
 import { Field, inputClass, Modal } from "@/components/modal";
 import { dayKey } from "@/lib/dates";
 import { playTap } from "@/lib/sound";
@@ -11,6 +11,7 @@ export function RoutineView() {
   const addRoutine = usePlanner((s) => s.addRoutine);
   const updateRoutine = usePlanner((s) => s.updateRoutine);
   const moveRoutine = usePlanner((s) => s.moveRoutine);
+  const placeRoutine = usePlanner((s) => s.placeRoutine);
   const deleteRoutine = usePlanner((s) => s.deleteRoutine);
   const toggleRoutineDone = usePlanner((s) => s.toggleRoutineDone);
   const doneToday = usePlanner((s) => (s.routineDone ?? {})[dayKey()] ?? []);
@@ -19,6 +20,26 @@ export function RoutineView() {
   const [end, setEnd] = useState("09:00");
   const [edit, setEdit] = useState<RoutineBlock | null>(null);
   const [error, setError] = useState("");
+  const [dragId, setDragId] = useState("");
+  const [overId, setOverId] = useState("");
+  const listRef = useRef<HTMLUListElement>(null);
+  const dragRef = useRef("");
+  const overRef = useRef("");
+
+  function finishDrag(clientY: number) {
+    const from = dragRef.current;
+    const target = overRef.current;
+    dragRef.current = "";
+    overRef.current = "";
+    setDragId("");
+    setOverId("");
+    if (!from || !target || from === target) return;
+    const row = listRef.current?.querySelector<HTMLElement>(`[data-id="${target}"]`);
+    const box = row?.getBoundingClientRect();
+    const after = box ? clientY > box.top + box.height / 2 : false;
+    placeRoutine(from, target, after);
+    playTap();
+  }
 
   return (
     <div>
@@ -53,11 +74,49 @@ export function RoutineView() {
         </button>
       </form>
       {error ? <p className="mb-3 text-sm text-ember">{error}</p> : null}
-      <ul className="space-y-2">
+      <ul ref={listRef} className="space-y-2">
         {routine.map((block, index) => {
           const done = doneToday.includes(block.id);
           return (
-          <li key={block.id} className="flex items-center gap-2 rounded-2xl border border-line bg-panel px-3 py-3">
+          <li
+            key={block.id}
+            data-id={block.id}
+            className={`flex items-center gap-2 rounded-2xl border bg-panel px-3 py-3 ${dragId === block.id ? "border-gold opacity-60" : overId === block.id ? "border-gold" : "border-line"}`}
+          >
+            <button
+              type="button"
+              title="Перетащить"
+              aria-label="Перетащить"
+              className="cursor-grab touch-none text-mist active:cursor-grabbing"
+              onPointerDown={(event) => {
+                if (event.button !== 0) return;
+                event.currentTarget.setPointerCapture(event.pointerId);
+                dragRef.current = block.id;
+                setDragId(block.id);
+              }}
+              onPointerMove={(event) => {
+                if (!dragRef.current || !listRef.current) return;
+                const rows = [...listRef.current.querySelectorAll<HTMLElement>("[data-id]")];
+                const hit = rows.find((row) => {
+                  const box = row.getBoundingClientRect();
+                  return event.clientY >= box.top && event.clientY <= box.bottom;
+                });
+                const next = hit?.dataset.id ?? "";
+                if (next !== overRef.current) {
+                  overRef.current = next;
+                  setOverId(next);
+                }
+              }}
+              onPointerUp={(event) => finishDrag(event.clientY)}
+              onPointerCancel={() => {
+                dragRef.current = "";
+                overRef.current = "";
+                setDragId("");
+                setOverId("");
+              }}
+            >
+              <GripVertical className="size-4" />
+            </button>
             <span className="flex flex-col">
               <button
                 type="button"

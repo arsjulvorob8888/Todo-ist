@@ -202,6 +202,7 @@ type State = {
   addRoutine: (category: string, start: string, end: string) => void;
   updateRoutine: (id: string, patch: Partial<RoutineBlock>) => void;
   moveRoutine: (id: string, direction: -1 | 1) => void;
+  placeRoutine: (id: string, targetId: string, after: boolean) => void;
   deleteRoutine: (id: string) => void;
   toggleRoutineDone: (id: string) => void;
   addLabel: (name: string) => void;
@@ -478,6 +479,17 @@ export const usePlanner = create<State>()(
         if (index < 0 || next < 0 || next >= list.length) return;
         const [item] = list.splice(index, 1);
         list.splice(next, 0, item!);
+        set({ routine: list });
+      },
+      placeRoutine: (id, targetId, after) => {
+        const list = [...(get().routine ?? [])];
+        const from = list.findIndex((block) => block.id === id);
+        if (from < 0 || id === targetId) return;
+        const [item] = list.splice(from, 1);
+        let to = list.findIndex((block) => block.id === targetId);
+        if (to < 0 || !item) return;
+        if (after) to += 1;
+        list.splice(to, 0, item);
         set({ routine: list });
       },
       toggleRoutineDone: (id) => {
