@@ -360,6 +360,7 @@ function TaskRow({
       </button>
       <button
         type="button"
+        title={done ? "Вернуть в работу" : "Выполнить"}
         aria-label={done ? "Вернуть в работу" : "Выполнить"}
         onClick={onDone}
         className={`flex size-8 shrink-0 items-center justify-center rounded-full border-2 text-sm font-bold ${done ? "border-gold bg-gold text-ink" : look.ring}`}

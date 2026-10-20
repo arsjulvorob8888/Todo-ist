@@ -72,12 +72,6 @@ function Ready({ children }: { children: ReactNode }) {
   useEffect(() => setSoundEnabled(sound), [sound]);
 
   useEffect(() => {
-    if (!undo) return;
-    const timer = window.setTimeout(dismissUndo, 6000);
-    return () => window.clearTimeout(timer);
-  }, [undo, dismissUndo]);
-
-  useEffect(() => {
     if (!reward) return;
     if (reward.levelUp) playLevel();
     else if (reward.amount >= 15) playWin();
@@ -141,6 +135,19 @@ function Ready({ children }: { children: ReactNode }) {
             <p className="text-xs text-mist">{syncLabel(status)}</p>
           </div>
         </div>
+        {undo ? (
+          <div className="mb-4 flex items-center justify-between gap-3 rounded-card border border-gold bg-panel px-4 py-3">
+            <p className="min-w-0 truncate text-sm">«{undo.title}» отмечена выполненной</p>
+            <div className="flex shrink-0 gap-2">
+              <button type="button" className="rounded-full bg-gold px-4 py-2 text-sm text-ink" onClick={() => completeTask(undo.id)}>
+                Вернуть
+              </button>
+              <button type="button" className="rounded-full bg-panel-2 px-3 py-2 text-sm" onClick={dismissUndo}>
+                Оставить
+              </button>
+            </div>
+          </div>
+        ) : null}
         {children}
       </main>
 
@@ -155,15 +162,6 @@ function Ready({ children }: { children: ReactNode }) {
           </button>
           <button type="button" onClick={stopPomo} className="rounded-full bg-ember px-3 py-2 text-sm text-ink">
             Стоп
-          </button>
-        </div>
-      ) : null}
-
-      {undo ? (
-        <div className="fixed bottom-24 left-1/2 z-40 flex max-w-[90vw] -translate-x-1/2 items-center gap-3 rounded-full border border-line bg-panel px-4 py-2 md:bottom-6">
-          <span className="truncate text-sm">Готово · {undo.title}</span>
-          <button type="button" className="shrink-0 text-gold" onClick={() => completeTask(undo.id)}>
-            Отменить
           </button>
         </div>
       ) : null}
