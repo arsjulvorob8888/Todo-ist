@@ -63,7 +63,7 @@ export function Today() {
             <p className="text-xs tracking-wide text-gold uppercase">{thought?.period ?? "Мысль"}</p>
             {thought ? (
               <>
-                <blockquote className="mt-2 font-display text-2xl leading-snug text-cream md:text-3xl">«{thought.text}»</blockquote>
+                <blockquote className="mt-2 font-display text-lg leading-relaxed text-cream md:text-xl">«{thought.text}»</blockquote>
                 <p className="mt-3 text-sm text-mist">{thought.author}</p>
               </>
             ) : (
