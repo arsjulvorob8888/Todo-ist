@@ -9,20 +9,25 @@ import { dayScore, spanSeconds, usePlanner, compareSpans, type Span } from "@/li
 
 type SpanSort = "new" | "old" | "long" | "score" | "category" | "hand";
 
-function timeKey(span: Span) {
-  return span.end || span.start;
+function stamp(iso: string) {
+  const ms = new Date(iso).getTime();
+  return Number.isNaN(ms) ? 0 : ms;
+}
+
+function moment(span: Span) {
+  return stamp(span.end || span.start);
 }
 
 function sortSpans(list: Span[], mode: SpanSort) {
   const items = [...list];
   if (mode === "hand") return items.sort(compareSpans);
-  if (mode === "old") return items.sort((a, b) => timeKey(a).localeCompare(timeKey(b)) || a.start.localeCompare(b.start));
-  if (mode === "long") return items.sort((a, b) => spanSeconds(b) - spanSeconds(a));
-  if (mode === "score") return items.sort((a, b) => (b.score ?? -1) - (a.score ?? -1) || timeKey(b).localeCompare(timeKey(a)));
-  if (mode === "category") return items.sort((a, b) => a.category.localeCompare(b.category, "ru") || timeKey(b).localeCompare(timeKey(a)));
+  if (mode === "old") return items.sort((a, b) => moment(a) - moment(b) || stamp(a.start) - stamp(b.start));
+  if (mode === "long") return items.sort((a, b) => spanSeconds(b) - spanSeconds(a) || moment(b) - moment(a));
+  if (mode === "score") return items.sort((a, b) => (b.score ?? -1) - (a.score ?? -1) || moment(b) - moment(a));
+  if (mode === "category") return items.sort((a, b) => a.category.localeCompare(b.category, "ru") || moment(b) - moment(a));
   return items.sort((a, b) => {
     if (!a.end !== !b.end) return a.end ? 1 : -1;
-    return timeKey(b).localeCompare(timeKey(a)) || b.start.localeCompare(a.start);
+    return moment(b) - moment(a) || stamp(b.start) - stamp(a.start);
   });
 }
 

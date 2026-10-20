@@ -138,9 +138,10 @@ export function dayScore(spans: Span[], day: string) {
 export function compareSpans(a: { end?: string; start: string; order?: number; placed?: boolean }, b: { end?: string; start: string; order?: number; placed?: boolean }) {
   if (a.placed && b.placed) return (a.order ?? 0) - (b.order ?? 0);
   if (!a.end !== !b.end) return a.end ? 1 : -1;
-  const byEnd = (b.end || b.start).localeCompare(a.end || a.start);
-  if (byEnd) return byEnd;
-  return b.start.localeCompare(a.start);
+  const at = new Date(a.end || a.start).getTime();
+  const bt = new Date(b.end || b.start).getTime();
+  if (bt !== at) return bt - at;
+  return new Date(b.start).getTime() - new Date(a.start).getTime();
 }
 
 export function compareTasks(a: Task, b: Task) {

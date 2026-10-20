@@ -30,7 +30,7 @@ export function Today() {
   }, []);
 
   const open = spans.find((span) => span.day === today && !span.end);
-  const finished = spans.filter((span) => span.day === today && span.end).sort((a, b) => b.start.localeCompare(a.start));
+  const finished = spans.filter((span) => span.day === today && span.end).sort((a, b) => new Date(b.start).getTime() - new Date(a.start).getTime());
   const unrated = finished.filter((span) => !span.score);
   const score = dayScore(spans, today);
   const seconds = spans.filter((span) => span.day === today).reduce((sum, span) => sum + spanSeconds(span), 0);
