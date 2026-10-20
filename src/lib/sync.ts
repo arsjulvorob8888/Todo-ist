@@ -15,6 +15,7 @@ type Profile = {
   projects: string[];
   routine?: { id: string; category: string; start: string; end: string }[];
   routineDone?: Record<string, string[]>;
+  catProject?: Record<string, string>;
 };
 type Sent = Record<string, string>;
 type Status = "local" | "offline" | "sync" | "ok";
@@ -75,6 +76,7 @@ function snapshot(state: ReturnType<typeof usePlanner.getState>) {
       projects: state.projects,
       routine: state.routine ?? [],
       routineDone: state.routineDone ?? {},
+      catProject: state.catProject ?? {},
     },
   });
   return map;
@@ -121,6 +123,7 @@ function applyRecords(records: SyncChange[]) {
           projects: string[];
           routine?: { id: string; category: string; start: string; end: string }[];
           routineDone?: Record<string, string[]>;
+          catProject?: Record<string, string>;
         };
         next.mission = payload.mission;
         next.xp = payload.xp;
@@ -129,6 +132,7 @@ function applyRecords(records: SyncChange[]) {
         next.projects = payload.projects;
         if (payload.routine) next.routine = payload.routine;
         if (payload.routineDone) next.routineDone = payload.routineDone;
+        if (payload.catProject) next.catProject = payload.catProject;
         sent[key] = JSON.stringify(payload);
         continue;
       }
@@ -186,6 +190,7 @@ function replaceAll(records: SyncChange[]) {
           projects: profile.projects ?? usePlanner.getState().projects,
           routine: profile.routine ?? usePlanner.getState().routine,
           routineDone: profile.routineDone ?? usePlanner.getState().routineDone,
+          catProject: profile.catProject ?? usePlanner.getState().catProject,
         }
       : {}),
   } as Partial<ReturnType<typeof usePlanner.getState>>);

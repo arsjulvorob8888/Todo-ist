@@ -12,15 +12,96 @@ const TITLES = {
 
 export function TimeCategories() {
   const timeCats = usePlanner((s) => s.timeCats);
+  const projects = usePlanner((s) => s.projects);
+  const catProject = usePlanner((s) => s.catProject ?? {});
   const addCategory = usePlanner((s) => s.addCategory);
   const renameCategory = usePlanner((s) => s.renameCategory);
   const deleteCategory = usePlanner((s) => s.deleteCategory);
-  return <Cats kind="time" names={timeCats} onAdd={addCategory} onRename={renameCategory} onDelete={deleteCategory} />;
+  const placeCategory = usePlanner((s) => s.placeCategory);
+  const [name, setName] = useState("");
+  const [project, setProject] = useState(projects[0] ?? "Прочее");
+  const [edit, setEdit] = useState<string | null>(null);
+  const [next, setNext] = useState("");
+  const [nextProject, setNextProject] = useState("");
+  return (
+    <div>
+      <div className="mb-3 grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
+        <input className={inputClass} placeholder="Новая категория" value={name} onChange={(event) => setName(event.target.value)} />
+        <select className={inputClass} value={project} onChange={(event) => setProject(event.target.value)}>
+          {projects.map((item) => (
+            <option key={item}>{item}</option>
+          ))}
+        </select>
+        <button
+          type="button"
+          className="rounded-full bg-gold px-4 text-ink"
+          onClick={() => {
+            addCategory("time", name, project);
+            setName("");
+          }}
+        >
+          Добавить
+        </button>
+      </div>
+      <ul className="space-y-2">
+        {timeCats.map((item) => (
+          <li key={item} className="flex items-center justify-between gap-3 rounded-2xl border border-line bg-panel px-3 py-3">
+            <span>
+              {item}
+              <span className="mt-0.5 block text-xs text-mist">{catProject[item] || "Прочее"}</span>
+            </span>
+            <span className="flex gap-3 text-sm">
+              <button
+                type="button"
+                className="text-gold"
+                onClick={() => {
+                  setEdit(item);
+                  setNext(item);
+                  setNextProject(catProject[item] || projects[0] || "Прочее");
+                }}
+              >
+                Править
+              </button>
+              <button type="button" className="text-ember" onClick={() => deleteCategory("time", item)}>
+                Удалить
+              </button>
+            </span>
+          </li>
+        ))}
+      </ul>
+      {edit ? (
+        <Modal title="Категория" onClose={() => setEdit(null)}>
+          <Field label="Название">
+            <input className={inputClass} value={next} onChange={(event) => setNext(event.target.value)} />
+          </Field>
+          <Field label="Проект">
+            <select className={inputClass} value={nextProject} onChange={(event) => setNextProject(event.target.value)}>
+              {projects.map((item) => (
+                <option key={item}>{item}</option>
+              ))}
+            </select>
+          </Field>
+          <button
+            type="button"
+            className="w-full rounded-full bg-gold py-3 text-ink"
+            onClick={() => {
+              if (next.trim() && next.trim() !== edit) renameCategory("time", edit, next);
+              placeCategory(next.trim() || edit, nextProject);
+              setEdit(null);
+            }}
+          >
+            Сохранить
+          </button>
+        </Modal>
+      ) : null}
+    </div>
+  );
 }
 
 export function LibraryView({ section }: { section: keyof typeof TITLES }) {
   const projects = usePlanner((s) => s.projects);
   const timeCats = usePlanner((s) => s.timeCats);
+  const catProject = usePlanner((s) => s.catProject ?? {});
   const addCategory = usePlanner((s) => s.addCategory);
   const renameCategory = usePlanner((s) => s.renameCategory);
   const deleteCategory = usePlanner((s) => s.deleteCategory);
@@ -41,7 +122,16 @@ export function LibraryView({ section }: { section: keyof typeof TITLES }) {
         <Cats kind="time" names={timeCats} onAdd={addCategory} onRename={renameCategory} onDelete={deleteCategory} />
       ) : null}
       {section === "project" ? (
-        <Cats kind="project" names={projects} onAdd={addCategory} onRename={renameCategory} onDelete={deleteCategory} />
+        <Cats
+          kind="project"
+          names={projects}
+          notes={Object.fromEntries(
+            projects.map((project) => [project, timeCats.filter((name) => (catProject[name] || "Прочее") === project).join(", ")]),
+          )}
+          onAdd={addCategory}
+          onRename={renameCategory}
+          onDelete={deleteCategory}
+        />
       ) : null}
       {section === "people" ? <People contacts={contacts} onAdd={addContact} /> : null}
       {section === "ideas" ? <Ideas ideas={ideas} onAdd={addIdea} /> : null}
@@ -53,12 +143,14 @@ export function LibraryView({ section }: { section: keyof typeof TITLES }) {
 function Cats({
   kind,
   names,
+  notes,
   onAdd,
   onRename,
   onDelete,
 }: {
   kind: "time" | "project";
   names: string[];
+  notes?: Record<string, string>;
   onAdd: (kind: "time" | "project", name: string) => void;
   onRename: (kind: "time" | "project", from: string, to: string) => void;
   onDelete: (kind: "time" | "project", name: string) => void;
@@ -84,7 +176,10 @@ function Cats({
       <ul className="space-y-2">
         {names.map((item) => (
           <li key={item} className="flex items-center justify-between rounded-2xl border border-line bg-panel px-3 py-3">
-            <span>{item}</span>
+            <span>
+              {item}
+              {notes?.[item] ? <span className="mt-0.5 block text-xs text-mist">{notes[item]}</span> : null}
+            </span>
             <span className="flex gap-3 text-sm">
               <button
                 type="button"

@@ -22,6 +22,7 @@ export function TasksView() {
   const addLabel = usePlanner((s) => s.addLabel);
   const focusTask = usePlanner((s) => s.focusTask);
   const timeCats = usePlanner((s) => s.timeCats);
+  const catProject = usePlanner((s) => s.catProject ?? {});
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Task | null>(null);
   const [filter, setFilter] = useState(OPEN);
@@ -233,6 +234,7 @@ export function TasksView() {
           boards={boards}
           labels={labels}
           categories={timeCats}
+          catProject={catProject}
           onClose={() => setOpen(false)}
           onSave={(task) => {
             addTask(task);
@@ -249,6 +251,7 @@ export function TasksView() {
           boards={boards}
           labels={labels}
           categories={timeCats}
+          catProject={catProject}
           initial={editing}
           onClose={() => setEditing(null)}
           onSave={(task) => {
@@ -410,6 +413,7 @@ function TaskForm({
   boards,
   labels,
   categories,
+  catProject,
   initial,
   onClose,
   onSave,
@@ -418,50 +422,34 @@ function TaskForm({
   boards: Board[];
   labels: Mark[];
   categories: string[];
+  catProject: Record<string, string>;
   initial?: Task;
   onClose: () => void;
   onSave: (task: { title: string; project: string; projectId: string; labelIds: string[]; priority: Priority; deadline: string; description: string; category: string }) => void;
 }) {
   const [title, setTitle] = useState(initial?.title ?? "");
-  const [projectId, setProjectId] = useState(initial?.projectId || boards.find((board) => board.name === initial?.project)?.id || boards.find((board) => board.inbox)?.id || "");
   const [category, setCategory] = useState(initial?.category ?? "");
   const [priority, setPriority] = useState<Priority>(initial?.priority ?? "Средний");
   const [deadline, setDeadline] = useState(initial?.deadline ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
   const [picked, setPicked] = useState<string[]>(initial?.labelIds ?? []);
   const [error, setError] = useState("");
-  const board = boards.find((item) => item.id === projectId);
   return (
     <Modal title={initial ? "Править задачу" : "Новая задача"} onClose={onClose}>
       <Field label="Текст">
         <input className={inputClass} value={title} onChange={(event) => setTitle(event.target.value)} />
       </Field>
-      <Field label="Проект">
-        <select className={inputClass} value={projectId} onChange={(event) => setProjectId(event.target.value)}>
-          {boards.map((item) => (
-            <option key={item.id} value={item.id}>
-              {item.name}
-            </option>
-          ))}
-          {projects
-            .filter((name) => !boards.some((item) => item.name === name))
-            .map((name) => (
-              <option key={name} value={name}>
-                {name}
-              </option>
-            ))}
-        </select>
-      </Field>
-      <Field label="Категория тайминга">
+      <Field label="Категория">
         <select className={inputClass} value={category} onChange={(event) => setCategory(event.target.value)}>
-          <option value="">Не выбрана</option>
+          <option value="">Выбери категорию</option>
           {categories.map((name) => (
             <option key={name} value={name}>
-              {name}
+              {name} · {catProject[name] || "Прочее"}
             </option>
           ))}
         </select>
       </Field>
+      {category ? <p className="-mt-2 mb-3 text-sm text-mist">Проект: {catProject[category] || "Прочее"}</p> : null}
       <Field label="Метки">
         <div className="flex flex-wrap gap-2">
           {labels.map((label) => {
@@ -501,14 +489,16 @@ function TaskForm({
         type="button"
         className="mt-2 w-full rounded-full bg-gold py-3 text-ink"
         onClick={() => {
-          if (!title.trim() || !deadline) {
-            setError("Нужны текст и дедлайн");
+          if (!title.trim() || !deadline || !category) {
+            setError("Нужны текст, категория и дедлайн");
             return;
           }
+          const projectName = catProject[category] || "Прочее";
+          const home = boards.find((item) => item.name === projectName) || boards.find((item) => item.inbox);
           onSave({
             title: title.trim(),
-            project: board?.name || projectId,
-            projectId: board?.id || projectId,
+            project: home?.name || projectName,
+            projectId: home?.id || projectName,
             labelIds: picked,
             priority,
             deadline,

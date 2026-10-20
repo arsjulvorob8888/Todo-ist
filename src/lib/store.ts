@@ -185,6 +185,7 @@ type State = {
   boards: Board[];
   labels: Mark[];
   timeCats: string[];
+  catProject: Record<string, string>;
   routine: RoutineBlock[];
   routineDone: Record<string, string[]>;
   tasks: Task[];
@@ -218,7 +219,8 @@ type State = {
   toggleGoal: (id: string) => void;
   deleteGoal: (id: string) => void;
   renameCategory: (kind: "project" | "time", from: string, to: string) => void;
-  addCategory: (kind: "project" | "time", name: string) => void;
+  addCategory: (kind: "project" | "time", name: string, project?: string) => void;
+  placeCategory: (name: string, project: string) => void;
   deleteCategory: (kind: "project" | "time", name: string) => void;
   addRoutine: (category: string, start: string, end: string) => void;
   updateRoutine: (id: string, patch: Partial<RoutineBlock>) => void;
@@ -259,6 +261,7 @@ export const usePlanner = create<State>()(
       boards: makeBoards(PROJECTS),
       labels: LABELS,
       timeCats: TIME,
+      catProject: fillCatProject(TIME),
       routine: [],
       routineDone: {},
       tasks: [],
@@ -420,16 +423,23 @@ export const usePlanner = create<State>()(
             projects: get().projects.map((name) => (name === from ? clean : name)),
             boards: get().boards.map((board) => (board.name === from ? { ...board, name: clean } : board)),
             tasks: get().tasks.map((task) => (task.project === from ? { ...task, project: clean } : task)),
+            catProject: remapProject(get().catProject, from, clean),
           });
         } else {
+          const home = get().catProject?.[from] || "Прочее";
+          const catProject = { ...(get().catProject ?? {}) };
+          delete catProject[from];
+          catProject[clean] = home;
           set({
             timeCats: get().timeCats.map((name) => (name === from ? clean : name)),
             spans: get().spans.map((span) => (span.category === from ? { ...span, category: clean } : span)),
             routine: (get().routine ?? []).map((block) => (block.category === from ? { ...block, category: clean } : block)),
+            tasks: get().tasks.map((task) => (task.category === from ? { ...task, category: clean } : task)),
+            catProject,
           });
         }
       },
-      addCategory: (kind, name) => {
+      addCategory: (kind, name, project = "") => {
         const clean = name.trim();
         if (!clean) return;
         if (kind === "project") {
@@ -446,8 +456,17 @@ export const usePlanner = create<State>()(
           });
         } else {
           if (get().timeCats.includes(clean)) return;
-          set({ timeCats: [...get().timeCats, clean].sort((a, b) => a.localeCompare(b, "ru")) });
+          const home = project.trim() || "Прочее";
+          set({
+            timeCats: [...get().timeCats, clean].sort((a, b) => a.localeCompare(b, "ru")),
+            catProject: { ...(get().catProject ?? {}), [clean]: home },
+          });
         }
+      },
+      placeCategory: (name, project) => {
+        const home = project.trim();
+        if (!name || !home) return;
+        set({ catProject: { ...(get().catProject ?? {}), [name]: home } });
       },
       deleteCategory: (kind, name) => {
         if (kind === "project") {
@@ -456,9 +475,13 @@ export const usePlanner = create<State>()(
             boards: get().boards.filter((board) => board.inbox || board.name !== name),
           });
         } else {
+          const catProject = { ...(get().catProject ?? {}) };
+          delete catProject[name];
           set({
             timeCats: get().timeCats.filter((item) => item !== name),
             routine: (get().routine ?? []).filter((block) => block.category !== name),
+            tasks: get().tasks.map((task) => (task.category === name ? { ...task, category: "" } : task)),
+            catProject,
           });
         }
       },
@@ -580,6 +603,7 @@ export const usePlanner = create<State>()(
           labels: saved.labels?.length ? saved.labels : current.labels,
           routine: saved.routine ?? [],
           routineDone: saved.routineDone ?? {},
+          catProject: fillCatProject(saved.timeCats ?? current.timeCats, saved.catProject),
           burst: 0,
           reward: null,
           undo: null,
@@ -588,6 +612,40 @@ export const usePlanner = create<State>()(
     },
   ),
 );
+
+function remapProject(map: Record<string, string> | undefined, from: string, to: string) {
+  const next: Record<string, string> = {};
+  for (const [category, project] of Object.entries(map ?? {})) next[category] = project === from ? to : project;
+  return next;
+}
+
+const CAT_HOME: Record<string, string> = {
+  Работа: "Работа / Бизнес",
+  Программирование: "Работа / Бизнес",
+  Покер: "Работа / Бизнес",
+  Планирование: "Работа / Бизнес",
+  Финансы: "Финансы",
+  Здоровье: "Здоровье",
+  Спорт: "Здоровье",
+  Йога: "Здоровье",
+  Сон: "Здоровье",
+  Общение: "Семья",
+  Чтение: "Обучение",
+  Философия: "Обучение",
+  Еда: "Дом",
+  Уборка: "Дом",
+  Сбор: "Дом",
+  Электрика: "Электрика",
+  Соцсети: "Блог",
+  Отдых: "Прочее",
+  Дорога: "Прочее",
+};
+
+function fillCatProject(cats: string[], current: Record<string, string> = {}) {
+  const next = { ...current };
+  for (const name of cats) if (!next[name]) next[name] = CAT_HOME[name] || "Прочее";
+  return next;
+}
 
 function shiftDay(key: string, delta: number) {
   const [y, m, d] = key.split("-").map(Number);
