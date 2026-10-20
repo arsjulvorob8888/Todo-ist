@@ -167,6 +167,7 @@ type State = {
   labels: Mark[];
   timeCats: string[];
   routine: RoutineBlock[];
+  routineDone: Record<string, string[]>;
   tasks: Task[];
   spans: Span[];
   goals: Goal[];
@@ -202,6 +203,7 @@ type State = {
   updateRoutine: (id: string, patch: Partial<RoutineBlock>) => void;
   moveRoutine: (id: string, direction: -1 | 1) => void;
   deleteRoutine: (id: string) => void;
+  toggleRoutineDone: (id: string) => void;
   addLabel: (name: string) => void;
   deleteLabel: (id: string) => void;
   addContact: (contact: Omit<Contact, "id">) => void;
@@ -235,6 +237,7 @@ export const usePlanner = create<State>()(
       labels: LABELS,
       timeCats: TIME,
       routine: [],
+      routineDone: {},
       tasks: [],
       spans: [],
       goals: [{ id: "mission-goal", title: "Финансовая свобода", content: "Чистая прибыль 300 000 ₽ в месяц. Капитал 10 млн. Пассив 100 000 ₽." }],
@@ -477,6 +480,17 @@ export const usePlanner = create<State>()(
         list.splice(next, 0, item!);
         set({ routine: list });
       },
+      toggleRoutineDone: (id) => {
+        const day = dayKey();
+        const done = { ...(get().routineDone ?? {}) };
+        const ids = new Set(done[day] ?? []);
+        if (ids.has(id)) ids.delete(id);
+        else ids.add(id);
+        done[day] = [...ids];
+        const cutoff = shiftDay(day, -14);
+        for (const key of Object.keys(done)) if (key < cutoff) delete done[key];
+        set({ routineDone: done });
+      },
       clearReward: () => set({ reward: null }),
     }),
     {
@@ -491,6 +505,7 @@ export const usePlanner = create<State>()(
           boards: saved.boards?.length ? saved.boards : makeBoards(projects),
           labels: saved.labels?.length ? saved.labels : current.labels,
           routine: saved.routine ?? [],
+          routineDone: saved.routineDone ?? {},
           burst: 0,
           reward: null,
           undo: null,
@@ -499,6 +514,13 @@ export const usePlanner = create<State>()(
     },
   ),
 );
+
+function shiftDay(key: string, delta: number) {
+  const [y, m, d] = key.split("-").map(Number);
+  const date = new Date(y, (m ?? 1) - 1, d);
+  date.setDate(date.getDate() + delta);
+  return dayKey(date);
+}
 
 function clockOk(value: string) {
   return /^([01]?\d|2[0-3]):[0-5]\d$/.test(value.trim());

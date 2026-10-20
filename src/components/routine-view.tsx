@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { Field, inputClass, Modal } from "@/components/modal";
+import { dayKey } from "@/lib/dates";
 import { playTap } from "@/lib/sound";
 import { usePlanner, type RoutineBlock } from "@/lib/store";
 
@@ -11,6 +12,8 @@ export function RoutineView() {
   const updateRoutine = usePlanner((s) => s.updateRoutine);
   const moveRoutine = usePlanner((s) => s.moveRoutine);
   const deleteRoutine = usePlanner((s) => s.deleteRoutine);
+  const toggleRoutineDone = usePlanner((s) => s.toggleRoutineDone);
+  const doneToday = usePlanner((s) => (s.routineDone ?? {})[dayKey()] ?? []);
   const [category, setCategory] = useState(categories[0] ?? "");
   const [start, setStart] = useState("08:00");
   const [end, setEnd] = useState("09:00");
@@ -22,7 +25,9 @@ export function RoutineView() {
       <header className="mb-4">
         <p className="text-sm text-mist">План, не факт</p>
         <h1 className="font-display text-4xl">Распорядок дня</h1>
-        <p className="mt-1 max-w-xl text-sm text-mist">Собери день из категорий. Стрелки меняют порядок, время правится у каждого пункта.</p>
+        <p className="mt-1 max-w-xl text-sm text-mist">
+          Кружок отмечает пункт на сегодня. Завтра отметки сбрасываются, и день начинается заново.
+        </p>
       </header>
       <form
         className="mb-4 grid gap-2 rounded-card border border-line bg-panel p-3 sm:grid-cols-[1fr_7rem_7rem_auto]"
@@ -49,7 +54,9 @@ export function RoutineView() {
       </form>
       {error ? <p className="mb-3 text-sm text-ember">{error}</p> : null}
       <ul className="space-y-2">
-        {routine.map((block, index) => (
+        {routine.map((block, index) => {
+          const done = doneToday.includes(block.id);
+          return (
           <li key={block.id} className="flex items-center gap-2 rounded-2xl border border-line bg-panel px-3 py-3">
             <span className="flex flex-col">
               <button
@@ -80,7 +87,7 @@ export function RoutineView() {
             <span className="w-28 text-sm text-mist">
               {block.start} – {block.end}
             </span>
-            <span className="flex-1">{block.category}</span>
+            <span className={`flex-1 ${done ? "text-mist line-through" : ""}`}>{block.category}</span>
             <span className="text-gold">{lengthLabel(block.start, block.end)}</span>
             <button type="button" className="text-sm text-gold" onClick={() => setEdit(block)}>
               Править
@@ -95,8 +102,21 @@ export function RoutineView() {
             >
               Убрать
             </button>
+            <button
+              type="button"
+              aria-label={done ? "Снять отметку" : "Отметить выполненным"}
+              title={done ? "Снять отметку" : "Выполнено сегодня"}
+              onClick={() => {
+                playTap();
+                toggleRoutineDone(block.id);
+              }}
+              className={`flex size-8 shrink-0 items-center justify-center rounded-full border-2 text-sm font-bold ${done ? "border-gold bg-gold text-ink" : "border-gold"}`}
+            >
+              {done ? "✓" : ""}
+            </button>
           </li>
-        ))}
+          );
+        })}
       </ul>
       {routine.length === 0 ? <p className="text-mist">Пока пусто. Выбери категорию и время сверху.</p> : null}
       {edit ? (

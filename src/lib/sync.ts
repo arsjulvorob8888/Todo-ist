@@ -14,6 +14,7 @@ type Profile = {
   timeCats: string[];
   projects: string[];
   routine?: { id: string; category: string; start: string; end: string }[];
+  routineDone?: Record<string, string[]>;
 };
 type Sent = Record<string, string>;
 type Status = "local" | "offline" | "sync" | "ok";
@@ -73,6 +74,7 @@ function snapshot(state: ReturnType<typeof usePlanner.getState>) {
       timeCats: state.timeCats,
       projects: state.projects,
       routine: state.routine ?? [],
+      routineDone: state.routineDone ?? {},
     },
   });
   return map;
@@ -118,6 +120,7 @@ function applyRecords(records: SyncChange[]) {
           timeCats: string[];
           projects: string[];
           routine?: { id: string; category: string; start: string; end: string }[];
+          routineDone?: Record<string, string[]>;
         };
         next.mission = payload.mission;
         next.xp = payload.xp;
@@ -125,6 +128,7 @@ function applyRecords(records: SyncChange[]) {
         next.timeCats = payload.timeCats;
         next.projects = payload.projects;
         if (payload.routine) next.routine = payload.routine;
+        if (payload.routineDone) next.routineDone = payload.routineDone;
         sent[key] = JSON.stringify(payload);
         continue;
       }
@@ -181,6 +185,7 @@ function replaceAll(records: SyncChange[]) {
           timeCats: profile.timeCats ?? usePlanner.getState().timeCats,
           projects: profile.projects ?? usePlanner.getState().projects,
           routine: profile.routine ?? usePlanner.getState().routine,
+          routineDone: profile.routineDone ?? usePlanner.getState().routineDone,
         }
       : {}),
   } as Partial<ReturnType<typeof usePlanner.getState>>);
