@@ -1,11 +1,12 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { BarChart3, BookOpen, CalendarClock, Flag, FolderKanban, Lightbulb, ListChecks, Sun, Timer, UserRound, Users, Volume2, VolumeX } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Burst } from "@/components/fx";
 import { cn } from "@/lib/cn";
 import { fmtSpan } from "@/lib/dates";
 import { playBell, playLevel, playWin, playXp, setSoundEnabled } from "@/lib/sound";
 import { startSync, useSyncStatus } from "@/lib/sync";
+import { recoverIfEmpty } from "@/lib/recovery";
 import { usePlanner } from "@/lib/store";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 
@@ -42,6 +43,7 @@ function Ready({ children }: { children: ReactNode }) {
   const stopPomo = usePlanner((s) => s.stopPomo);
   const finishPomo = usePlanner((s) => s.finishPomo);
   const { status } = useSyncStatus();
+  const sawSync = useRef(false);
   const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
@@ -50,6 +52,12 @@ function Ready({ children }: { children: ReactNode }) {
       void navigator.serviceWorker.register("/sw.js");
     }
   }, []);
+
+  useEffect(() => {
+    if (status === "sync") sawSync.current = true;
+    if (!sawSync.current || status === "sync") return;
+    recoverIfEmpty();
+  }, [status]);
 
   useEffect(() => {
     const id = window.setInterval(() => setNow(Date.now()), 1000);
