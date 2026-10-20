@@ -601,6 +601,8 @@ export const usePlanner = create<State>()(
       merge: (persisted, current) => {
         const saved = (persisted ?? {}) as Partial<State>;
         const projects = saved.projects?.length ? saved.projects : current.projects;
+        const cats = saved.timeCats?.length ? saved.timeCats : current.timeCats;
+        const tasks = (saved.tasks ?? []).map((task) => withGuessedCategory(task, cats));
         return {
           ...current,
           ...saved,
@@ -610,6 +612,7 @@ export const usePlanner = create<State>()(
           routine: saved.routine ?? [],
           routineDone: saved.routineDone ?? {},
           catProject: saved.catProject ?? {},
+          tasks: saved.tasks ? tasks : current.tasks,
           burst: 0,
           reward: null,
           undo: null,
@@ -623,6 +626,45 @@ function remapProject(map: Record<string, string> | undefined, from: string, to:
   const next: Record<string, string> = {};
   for (const [category, project] of Object.entries(map ?? {})) next[category] = project === from ? to : project;
   return next;
+}
+
+const CATEGORY_HINTS: [RegExp, string][] = [
+  [/ак-?\s*12|автомат|сборк|разборк|военкомат|прописк|квартир|надым|усть-?донец|документ|справк|учёт|учет/, "решен"],
+  [/безопаст|проверк/, "планир"],
+  [/англий|устав|книг|чтени|изуч/, "чтен"],
+  [/тренир|спорт|пробежк|тренаж/, "спорт"],
+  [/йог|медитац/, "йога"],
+  [/торгов|стратег|акци|бюджет|деньг|инвест/, "финанс"],
+  [/todo|програм|devops|код\b|сайт|приложен/, "програм"],
+  [/философ|психол/, "философ"],
+  [/уборк/, "убор"],
+  [/душ|туалет/, "туалет"],
+  [/соцсет|instagram|телеграм/, "соцсет"],
+  [/покер/, "покер"],
+  [/еда|обед|ужин|завтрак|готовк/, "еда"],
+  [/(^|[^а-яё])сон([^а-яё]|$)/, "сон"],
+  [/дорог|поездк|машин/, "дорог"],
+  [/написать|позвон|сообщ|созвон|письм/, "общен"],
+  [/отдых|кино|фильм/, "отдых"],
+  [/здоров|врач|анализ|аптек/, "здоров"],
+  [/план|продума/, "планир"],
+  [/(?<![а-яё])работ/i, "работ"],
+];
+
+export function guessCategory(title: string, cats: string[]) {
+  const text = title.toLowerCase();
+  for (const [pattern, hint] of CATEGORY_HINTS) {
+    if (!pattern.test(text)) continue;
+    const found = cats.find((name) => name.toLowerCase().includes(hint));
+    if (found) return found;
+  }
+  return cats.find((name) => name.toLowerCase().includes("решен")) ?? "";
+}
+
+export function withGuessedCategory<T extends { title?: string; category?: string }>(task: T, cats: string[]) {
+  if (task.category || !task.title) return task;
+  const category = guessCategory(task.title, cats);
+  return category ? { ...task, category } : task;
 }
 
 function shiftDay(key: string, delta: number) {

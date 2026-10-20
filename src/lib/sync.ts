@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from "react";
 import { pushPull, type SyncChange } from "@/lib/sync.functions";
-import { usePlanner } from "@/lib/store";
+import { usePlanner, withGuessedCategory, type Task } from "@/lib/store";
 
 const LISTS = ["tasks", "spans", "goals", "contacts", "ideas", "books", "boards", "labels"] as const;
 const SENT_KEY = "poryadok-sync-sent";
@@ -144,10 +144,21 @@ function applyRecords(records: SyncChange[]) {
         if (index >= 0) list.splice(index, 1);
         sent[key] = "deleted";
       } else {
-        const payload = record.payload as { id: string };
+        const raw = JSON.stringify(record.payload);
+        let payload = record.payload as { id: string };
+        if (collection === "tasks") {
+          const cats = next.timeCats?.length ? next.timeCats : usePlanner.getState().timeCats;
+          const stamped = withGuessedCategory(payload as Task, cats);
+          if (stamped !== payload) {
+            if (index >= 0) list[index] = stamped;
+            else list.unshift(stamped);
+            sent[key] = raw;
+            continue;
+          }
+        }
         if (index >= 0) list[index] = payload;
         else list.unshift(payload);
-        sent[key] = JSON.stringify(payload);
+        sent[key] = raw;
       }
     }
     saveSent(sent);
@@ -178,6 +189,12 @@ function replaceAll(records: SyncChange[]) {
     lists[collection].push(record.payload as { id: string });
     sent[key] = JSON.stringify(record.payload);
   }
+  const cats = profile?.timeCats ?? usePlanner.getState().timeCats;
+  lists.tasks = lists.tasks.map((item) => {
+    const stamped = withGuessedCategory(item as Task, cats);
+    if (stamped !== item) sent[`tasks:${item.id}`] = JSON.stringify(item);
+    return stamped;
+  });
   saveSent(sent);
   usePlanner.setState({
     ...lists,
