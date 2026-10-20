@@ -1,4 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { LibraryView } from "@/components/more-view";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
-export const Route = createFileRoute("/time")({ component: () => <LibraryView section="time" /> });
+export const Route = createFileRoute("/time")({
+  beforeLoad: () => {
+    throw redirect({ to: "/timing" });
+  },
+});

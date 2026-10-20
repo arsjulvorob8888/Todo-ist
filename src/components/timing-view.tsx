@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { Field, inputClass, Modal } from "@/components/modal";
+import { TimeCategories } from "@/components/more-view";
 import { ScorePips } from "@/components/score-pips";
 import { addDays, clock, dayKey, fmtHm, fmtSpan, formatDay } from "@/lib/dates";
 import { playStart, playStop, playTap } from "@/lib/sound";
@@ -17,6 +18,7 @@ export function TimingView() {
   const addManualSpan = usePlanner((s) => s.addManualSpan);
   const [day, setDay] = useState(dayKey());
   const [manual, setManual] = useState(false);
+  const [cats, setCats] = useState(false);
   const [editId, setEditId] = useState("");
   const [ask, setAsk] = useState<{ category: string; mode: "start" | "stop" } | null>(null);
   const [askTime, setAskTime] = useState("12:00");
@@ -66,8 +68,15 @@ export function TimingView() {
       </header>
 
       <section className="mb-4 rounded-card border border-line bg-panel p-4">
-        <p className="font-display text-3xl">{open ? `${open.category} · ${fmtSpan(spanSeconds(open))}` : "Пауза"}</p>
-        <p className="text-sm text-mist">Нажатие категории ставит старт и закрывает предыдущую.</p>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="font-display text-3xl">{open ? `${open.category} · ${fmtSpan(spanSeconds(open))}` : "Пауза"}</p>
+            <p className="text-sm text-mist">Нажатие категории ставит старт и закрывает предыдущую.</p>
+          </div>
+          <button type="button" className="shrink-0 rounded-full border border-line px-3 py-2 text-sm text-gold" onClick={() => setCats(true)}>
+            Редактировать категории
+          </button>
+        </div>
         {open ? (
           <button
             type="button"
@@ -196,6 +205,11 @@ export function TimingView() {
             setEditId("");
           }}
         />
+      ) : null}
+      {cats ? (
+        <Modal title="Категории" onClose={() => setCats(false)}>
+          <TimeCategories />
+        </Modal>
       ) : null}
       {ask ? (
         <Modal title={ask.mode === "start" ? "Начало" : "Окончание"} onClose={() => setAsk(null)}>

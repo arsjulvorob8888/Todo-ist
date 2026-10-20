@@ -10,6 +10,14 @@ const TITLES = {
   books: "Книги",
 } as const;
 
+export function TimeCategories() {
+  const timeCats = usePlanner((s) => s.timeCats);
+  const addCategory = usePlanner((s) => s.addCategory);
+  const renameCategory = usePlanner((s) => s.renameCategory);
+  const deleteCategory = usePlanner((s) => s.deleteCategory);
+  return <Cats kind="time" names={timeCats} onAdd={addCategory} onRename={renameCategory} onDelete={deleteCategory} />;
+}
+
 export function LibraryView({ section }: { section: keyof typeof TITLES }) {
   const projects = usePlanner((s) => s.projects);
   const timeCats = usePlanner((s) => s.timeCats);
