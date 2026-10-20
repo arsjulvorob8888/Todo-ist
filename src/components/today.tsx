@@ -17,6 +17,7 @@ export function Today() {
   const stopSpan = usePlanner((s) => s.stopSpan);
   const updateSpan = usePlanner((s) => s.updateSpan);
   const startPomo = usePlanner((s) => s.startPomo);
+  const focusTask = usePlanner((s) => s.focusTask);
   const pausePomo = usePlanner((s) => s.pausePomo);
   const stopPomo = usePlanner((s) => s.stopPomo);
   const pomo = usePlanner((s) => s.pomo);
@@ -165,7 +166,8 @@ export function Today() {
         now={Date.now()}
         onStart={(minutes) => {
           playStart();
-          startPomo(minutes, pomoTask, "focus");
+          if (pomoTask) focusTask(pomoTask, minutes);
+          else startPomo(minutes, "", "focus");
         }}
         onBreak={() => startPomo(5, pomo.taskId, "break")}
         onPause={pausePomo}
@@ -211,7 +213,7 @@ export function Today() {
                   type="button"
                   onClick={() => {
                     playStart();
-                    startPomo(25, task.id);
+                    focusTask(task.id, 25);
                   }}
                   className="rounded-full bg-gold px-3 py-2 text-sm text-ink"
                 >

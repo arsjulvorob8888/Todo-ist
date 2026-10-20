@@ -23,6 +23,7 @@ export type Task = {
   projectId?: string;
   labelIds?: string[];
   order?: number;
+  category?: string;
 };
 
 export type Span = {
@@ -231,6 +232,7 @@ type State = {
   addIdea: (idea: Omit<Idea, "id">) => void;
   addBook: (book: Omit<Book, "id" | "date">) => void;
   startPomo: (minutes: number, taskId?: string, mode?: "focus" | "break") => void;
+  focusTask: (id: string, minutes?: number) => void;
   pausePomo: () => void;
   stopPomo: () => void;
   finishPomo: () => void;
@@ -486,6 +488,17 @@ export const usePlanner = create<State>()(
             taskId,
           },
         }),
+      focusTask: (id, minutes = 25) => {
+        const task = get().tasks.find((item) => item.id === id);
+        if (!task) {
+          get().startPomo(minutes, id);
+          return;
+        }
+        const category = task.category || (get().timeCats.includes(task.project) ? task.project : "");
+        if (category) get().startSpan(category);
+        if (task.status !== "Выполнено" && task.status !== "В процессе") get().updateTask(id, { status: "В процессе" });
+        get().startPomo(minutes, id);
+      },
       pausePomo: () => {
         const pomo = get().pomo;
         if (!pomo.running) {

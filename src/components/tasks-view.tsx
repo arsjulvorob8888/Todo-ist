@@ -20,7 +20,8 @@ export function TasksView() {
   const boards = usePlanner((s) => s.boards);
   const labels = usePlanner((s) => s.labels);
   const addLabel = usePlanner((s) => s.addLabel);
-  const startPomo = usePlanner((s) => s.startPomo);
+  const focusTask = usePlanner((s) => s.focusTask);
+  const timeCats = usePlanner((s) => s.timeCats);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Task | null>(null);
   const [filter, setFilter] = useState(OPEN);
@@ -207,7 +208,7 @@ export function TasksView() {
             onProgress={() => updateTask(task.id, { status: "В процессе" })}
             onPomo={() => {
               playStart();
-              startPomo(25, task.id);
+              focusTask(task.id, 25);
             }}
           />
         ))}
@@ -231,6 +232,7 @@ export function TasksView() {
           projects={projects}
           boards={boards}
           labels={labels}
+          categories={timeCats}
           onClose={() => setOpen(false)}
           onSave={(task) => {
             addTask(task);
@@ -246,6 +248,7 @@ export function TasksView() {
           projects={projects}
           boards={boards}
           labels={labels}
+          categories={timeCats}
           initial={editing}
           onClose={() => setEditing(null)}
           onSave={(task) => {
@@ -361,7 +364,8 @@ function TaskRow({
           <span className={`rounded-full px-2 py-0.5 text-[11px] leading-none font-semibold tracking-wide ${look.pill}`}>{task.priority}</span>
         </p>
         <p className="text-xs text-mist">
-          Поставлена {formatCreated(task.created)} · дедлайн {formatDeadline(task.deadline)} · {task.status}
+          Поставлена {formatCreated(task.created)}
+          {task.category ? ` · ${task.category}` : ""} · дедлайн {formatDeadline(task.deadline)} · {task.status}
         </p>
         {(task.labelIds ?? []).length ? (
           <p className="mt-1 flex flex-wrap gap-1">
@@ -405,6 +409,7 @@ function TaskForm({
   projects,
   boards,
   labels,
+  categories,
   initial,
   onClose,
   onSave,
@@ -412,12 +417,14 @@ function TaskForm({
   projects: string[];
   boards: Board[];
   labels: Mark[];
+  categories: string[];
   initial?: Task;
   onClose: () => void;
-  onSave: (task: { title: string; project: string; projectId: string; labelIds: string[]; priority: Priority; deadline: string; description: string }) => void;
+  onSave: (task: { title: string; project: string; projectId: string; labelIds: string[]; priority: Priority; deadline: string; description: string; category: string }) => void;
 }) {
   const [title, setTitle] = useState(initial?.title ?? "");
   const [projectId, setProjectId] = useState(initial?.projectId || boards.find((board) => board.name === initial?.project)?.id || boards.find((board) => board.inbox)?.id || "");
+  const [category, setCategory] = useState(initial?.category ?? "");
   const [priority, setPriority] = useState<Priority>(initial?.priority ?? "Средний");
   const [deadline, setDeadline] = useState(initial?.deadline ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
@@ -443,6 +450,16 @@ function TaskForm({
                 {name}
               </option>
             ))}
+        </select>
+      </Field>
+      <Field label="Категория тайминга">
+        <select className={inputClass} value={category} onChange={(event) => setCategory(event.target.value)}>
+          <option value="">Не выбрана</option>
+          {categories.map((name) => (
+            <option key={name} value={name}>
+              {name}
+            </option>
+          ))}
         </select>
       </Field>
       <Field label="Метки">
@@ -496,6 +513,7 @@ function TaskForm({
             priority,
             deadline,
             description,
+            category,
           });
           onClose();
         }}
