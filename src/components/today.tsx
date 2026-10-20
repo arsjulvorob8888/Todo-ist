@@ -94,17 +94,26 @@ export function Today() {
         </article>
           </div>
         </div>
-        <article className="flex h-full items-center gap-4 rounded-card border border-line bg-panel p-4">
-          <Rings time={Math.min(1, seconds / (8 * 3600))} tasks={Math.min(1, done / 3)} pomos={Math.min(1, pomos / 4)} />
-          <div className="text-sm text-mist">
-            <p>
-              <span className="text-gold">Время</span> {fmtHm(seconds)} / 8:00
-            </p>
-            <p>
-              <span className="text-ember">Дела</span> {done} / 3
-            </p>
-            <p>
-              <span className="text-cream">Помидоры</span> {pomos} / 4
+        <article className="flex h-full flex-col justify-between rounded-card border border-line bg-panel p-4">
+          <div className="flex items-center gap-4">
+            <Rings time={Math.min(1, seconds / (8 * 3600))} tasks={Math.min(1, done / 3)} pomos={Math.min(1, pomos / 4)} />
+            <div className="text-sm text-mist">
+              <p>
+                <span className="text-gold">Время</span> {fmtHm(seconds)} / 8:00
+              </p>
+              <p>
+                <span className="text-ember">Дела</span> {done} / 3
+              </p>
+              <p>
+                <span className="text-cream">Помидоры</span> {pomos} / 4
+              </p>
+            </div>
+          </div>
+          <div className="mt-4 border-t border-line pt-3">
+            <p className="text-xs tracking-wide text-mist uppercase">Оценка дня</p>
+            <p className="font-display text-4xl text-cream">{score ?? "—"}</p>
+            <p className="text-xs text-mist">
+              {score != null ? `среднее из ${finished.length - unrated.length} этапов` : "оцени закрытые этапы"}
             </p>
           </div>
         </article>
