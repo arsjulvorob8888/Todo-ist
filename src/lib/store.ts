@@ -34,6 +34,7 @@ export type Span = {
   end: string;
   score?: number;
   order?: number;
+  placed?: boolean;
 };
 
 export type RoutineBlock = {
@@ -134,11 +135,11 @@ export function dayScore(spans: Span[], day: string) {
   return Math.round((sum / rated.length) * 10) / 10;
 }
 
-export function compareSpans(a: { order?: number; start: string }, b: { order?: number; start: string }) {
-  const aSet = a.order != null;
-  const bSet = b.order != null;
-  if (aSet && bSet) return (a.order ?? 0) - (b.order ?? 0);
-  if (aSet !== bSet) return aSet ? 1 : -1;
+export function compareSpans(a: { end?: string; start: string; order?: number; placed?: boolean }, b: { end?: string; start: string; order?: number; placed?: boolean }) {
+  if (a.placed && b.placed) return (a.order ?? 0) - (b.order ?? 0);
+  if (!a.end !== !b.end) return a.end ? 1 : -1;
+  const byEnd = (b.end || b.start).localeCompare(a.end || a.start);
+  if (byEnd) return byEnd;
   return b.start.localeCompare(a.start);
 }
 
@@ -387,7 +388,7 @@ export const usePlanner = create<State>()(
         [ids[index], ids[next]] = [ids[next]!, ids[index]!];
         const rank = new Map(ids.map((itemId, place) => [itemId, place]));
         set({
-          spans: all.map((item) => (item.day === span.day ? { ...item, order: rank.get(item.id) ?? item.order } : item)),
+          spans: all.map((item) => (item.day === span.day ? { ...item, placed: true, order: rank.get(item.id) ?? item.order } : item)),
         });
       },
       deleteSpan: (id) => set({ spans: get().spans.filter((span) => span.id !== id) }),
