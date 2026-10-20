@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Field, inputClass, Modal } from "@/components/modal";
+import { addDays, dayKey } from "@/lib/dates";
 import { playStart } from "@/lib/sound";
 import { usePlanner, type Board, type Mark, type Priority, type Task } from "@/lib/store";
 
@@ -19,16 +20,28 @@ export function TasksView() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Task | null>(null);
   const [filter, setFilter] = useState("Все");
+  const [priority, setPriority] = useState("Все");
+  const [due, setDue] = useState("Все");
   const [project, setProject] = useState("Все");
   const [labelId, setLabelId] = useState("Все");
   const [labelName, setLabelName] = useState("");
 
   const visible = tasks.filter((task) => {
     if (filter !== "Все" && task.status !== filter) return false;
+    if (priority !== "Все" && task.priority !== priority) return false;
+    if (!matchesDue(task, due)) return false;
     if (project !== "Все" && task.projectId !== project && task.project !== project) return false;
     if (labelId !== "Все" && !(task.labelIds ?? []).includes(labelId)) return false;
     return true;
   });
+
+  function resetFilters() {
+    setFilter("Все");
+    setPriority("Все");
+    setDue("Все");
+    setProject("Все");
+    setLabelId("Все");
+  }
 
   return (
     <div>
@@ -97,6 +110,33 @@ export function TasksView() {
           Метка
         </button>
       </div>
+      <div className="mb-3 grid gap-2 sm:grid-cols-3">
+        <label className="text-xs tracking-wide text-mist uppercase">
+          Важность
+          <select className={inputClass + " mt-1"} value={priority} onChange={(event) => setPriority(event.target.value)}>
+            <option value="Все">Все</option>
+            {PRIORITIES.map((name) => (
+              <option key={name}>{name}</option>
+            ))}
+          </select>
+        </label>
+        <label className="text-xs tracking-wide text-mist uppercase">
+          Статус
+          <select className={inputClass + " mt-1"} value={filter} onChange={(event) => setFilter(event.target.value)}>
+            {["Все", "В ожидании", "В процессе", "Выполнено"].map((name) => (
+              <option key={name}>{name}</option>
+            ))}
+          </select>
+        </label>
+        <label className="text-xs tracking-wide text-mist uppercase">
+          Дедлайн
+          <select className={inputClass + " mt-1"} value={due} onChange={(event) => setDue(event.target.value)}>
+            {["Все", "Просрочен", "Сегодня", "Завтра", "7 дней", "Без дедлайна"].map((name) => (
+              <option key={name}>{name}</option>
+            ))}
+          </select>
+        </label>
+      </div>
       <ul className="space-y-2">
         {visible.map((task) => (
           <TaskRow
@@ -121,10 +161,7 @@ export function TasksView() {
             <button
               type="button"
               className="ml-3 rounded-full bg-gold px-3 py-1 text-ink"
-              onClick={() => {
-                setFilter("Все");
-                setProject("Все");
-              }}
+              onClick={resetFilters}
             >
               Показать все ({tasks.length})
             </button>
@@ -140,6 +177,8 @@ export function TasksView() {
           onSave={(task) => {
             addTask(task);
             setFilter("Все");
+            setPriority("Все");
+            setDue("Все");
             setProject("Все");
           }}
         />
@@ -159,6 +198,18 @@ export function TasksView() {
       ) : null}
     </div>
   );
+}
+
+function matchesDue(task: Task, due: string) {
+  if (due === "Все") return true;
+  if (due === "Без дедлайна") return !task.deadline;
+  if (!task.deadline) return false;
+  const today = dayKey();
+  if (due === "Просрочен") return task.deadline < today && task.status !== "Выполнено";
+  if (due === "Сегодня") return task.deadline === today;
+  if (due === "Завтра") return task.deadline === addDays(today, 1);
+  if (due === "7 дней") return task.deadline >= today && task.deadline <= addDays(today, 7);
+  return true;
 }
 
 function TaskRow({
