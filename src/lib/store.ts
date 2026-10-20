@@ -22,6 +22,7 @@ export type Task = {
   beforeStatus?: Status;
   projectId?: string;
   labelIds?: string[];
+  order?: number;
 };
 
 export type Span = {
@@ -140,6 +141,14 @@ export function compareSpans(a: { order?: number; start: string }, b: { order?: 
   return b.start.localeCompare(a.start);
 }
 
+export function compareTasks(a: Task, b: Task) {
+  const aSet = a.order != null;
+  const bSet = b.order != null;
+  if (aSet && bSet) return (a.order ?? 0) - (b.order ?? 0);
+  if (aSet !== bSet) return aSet ? 1 : -1;
+  return b.created.localeCompare(a.created);
+}
+
 export function spanSeconds(span: Span, now = Date.now()) {
   const start = new Date(span.start).getTime();
   const cap = span.end ? new Date(span.end).getTime() : Math.min(now, endOfDayMs(span.day));
@@ -192,6 +201,7 @@ type State = {
   toggleSound: () => void;
   addTask: (task: Omit<Task, "id" | "created" | "completed" | "pomodoros" | "status"> & { status?: Status }) => void;
   updateTask: (id: string, patch: Partial<Task>) => void;
+  placeTask: (id: string, targetId: string, after: boolean) => void;
   completeTask: (id: string) => void;
   dismissUndo: () => void;
   deleteTask: (id: string) => void;
@@ -267,6 +277,7 @@ export const usePlanner = create<State>()(
           get().boards.find((item) => item.id === task.projectId) ||
           get().boards.find((item) => item.name === task.project) ||
           get().boards.find((item) => item.inbox);
+        const orders = get().tasks.map((item) => item.order).filter((value): value is number => value != null);
         set({
           tasks: [
             {
@@ -279,12 +290,24 @@ export const usePlanner = create<State>()(
               ...task,
               projectId: board?.id ?? "inbox",
               project: board?.name ?? task.project,
+              ...(orders.length ? { order: Math.min(...orders) - 1 } : {}),
             },
             ...get().tasks,
           ],
         });
       },
       updateTask: (id, patch) => set({ tasks: get().tasks.map((t) => (t.id === id ? { ...t, ...patch } : t)) }),
+      placeTask: (id, targetId, after) => {
+        const list = [...get().tasks].sort(compareTasks);
+        const from = list.findIndex((task) => task.id === id);
+        if (from < 0 || id === targetId) return;
+        const [item] = list.splice(from, 1);
+        let to = list.findIndex((task) => task.id === targetId);
+        if (to < 0 || !item) return;
+        if (after) to += 1;
+        list.splice(to, 0, item);
+        set({ tasks: list.map((task, index) => ({ ...task, order: index })) });
+      },
       completeTask: (id) => {
         const task = get().tasks.find((t) => t.id === id);
         if (!task) return;

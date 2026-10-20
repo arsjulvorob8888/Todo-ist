@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { GripVertical } from "lucide-react";
 import { Field, inputClass, Modal } from "@/components/modal";
 import { addDays, dayKey } from "@/lib/dates";
-import { playStart } from "@/lib/sound";
-import { usePlanner, type Board, type Mark, type Priority, type Task } from "@/lib/store";
+import { playStart, playTap } from "@/lib/sound";
+import { compareTasks, usePlanner, type Board, type Mark, type Priority, type Task } from "@/lib/store";
 
 const PRIORITIES: Priority[] = ["Срочно", "Высокий", "Средний", "Низкий"];
 const OPEN = "Все кроме выполнено";
@@ -15,6 +16,7 @@ export function TasksView() {
   const completeTask = usePlanner((s) => s.completeTask);
   const deleteTask = usePlanner((s) => s.deleteTask);
   const updateTask = usePlanner((s) => s.updateTask);
+  const placeTask = usePlanner((s) => s.placeTask);
   const boards = usePlanner((s) => s.boards);
   const labels = usePlanner((s) => s.labels);
   const addLabel = usePlanner((s) => s.addLabel);
@@ -28,6 +30,11 @@ export function TasksView() {
   const [labelId, setLabelId] = useState("Все");
   const [labelName, setLabelName] = useState("");
   const [now, setNow] = useState(Date.now());
+  const [dragId, setDragId] = useState("");
+  const [overId, setOverId] = useState("");
+  const listRef = useRef<HTMLUListElement>(null);
+  const dragRef = useRef("");
+  const overRef = useRef("");
 
   useEffect(() => {
     const id = window.setInterval(() => setNow(Date.now()), 30000);
@@ -42,7 +49,22 @@ export function TasksView() {
     if (project !== "Все" && task.projectId !== project && task.project !== project) return false;
     if (labelId !== "Все" && !(task.labelIds ?? []).includes(labelId)) return false;
     return true;
-  });
+  }).sort(compareTasks);
+
+  function finishDrag(clientY: number) {
+    const from = dragRef.current;
+    const target = overRef.current;
+    dragRef.current = "";
+    overRef.current = "";
+    setDragId("");
+    setOverId("");
+    if (!from || !target || from === target) return;
+    const row = listRef.current?.querySelector<HTMLElement>(`[data-id="${target}"]`);
+    const box = row?.getBoundingClientRect();
+    const after = box ? clientY > box.top + box.height / 2 : false;
+    placeTask(from, target, after);
+    playTap();
+  }
 
   function resetFilters() {
     setFilter(OPEN);
@@ -146,13 +168,39 @@ export function TasksView() {
           </select>
         </label>
       </div>
-      <ul className="space-y-2">
+      <ul ref={listRef} className="space-y-2">
         {visible.map((task) => (
           <TaskRow
             key={task.id}
             task={task}
             now={now}
             labels={labels}
+            dragging={dragId === task.id}
+            over={overId === task.id}
+            onDragStart={() => {
+              dragRef.current = task.id;
+              setDragId(task.id);
+            }}
+            onDragMove={(clientY) => {
+              if (!dragRef.current || !listRef.current) return;
+              const rows = [...listRef.current.querySelectorAll<HTMLElement>("[data-id]")];
+              const hit = rows.find((row) => {
+                const box = row.getBoundingClientRect();
+                return clientY >= box.top && clientY <= box.bottom;
+              });
+              const next = hit?.dataset.id ?? "";
+              if (next !== overRef.current) {
+                overRef.current = next;
+                setOverId(next);
+              }
+            }}
+            onDragEnd={finishDrag}
+            onDragCancel={() => {
+              dragRef.current = "";
+              overRef.current = "";
+              setDragId("");
+              setOverId("");
+            }}
             onDone={() => completeTask(task.id)}
             onDelete={() => deleteTask(task.id)}
             onEdit={() => setEditing(task)}
@@ -245,6 +293,12 @@ function TaskRow({
   task,
   now,
   labels,
+  dragging,
+  over,
+  onDragStart,
+  onDragMove,
+  onDragEnd,
+  onDragCancel,
   onDone,
   onDelete,
   onEdit,
@@ -254,6 +308,12 @@ function TaskRow({
   task: Task;
   now: number;
   labels: Mark[];
+  dragging: boolean;
+  over: boolean;
+  onDragStart: () => void;
+  onDragMove: (clientY: number) => void;
+  onDragEnd: (clientY: number) => void;
+  onDragCancel: () => void;
   onDone: () => void;
   onDelete: () => void;
   onEdit: () => void;
@@ -264,7 +324,29 @@ function TaskRow({
   const look = priorityLook(task.priority, done);
   const left = deadlineLeft(task.deadline, now);
   return (
-    <li className={`flex items-center gap-3 rounded-card border border-line border-l-4 px-3 py-3 ${look.rail} ${look.wash}`}>
+    <li
+      data-id={task.id}
+      className={`flex items-center gap-3 rounded-card border border-l-4 px-3 py-3 ${look.rail} ${look.wash} ${dragging ? "border-gold opacity-60" : over ? "border-gold" : "border-line"}`}
+    >
+      <button
+        type="button"
+        title="Перетащить"
+        aria-label="Перетащить"
+        className="cursor-grab touch-none text-mist active:cursor-grabbing"
+        onPointerDown={(event) => {
+          if (event.button !== 0) return;
+          event.currentTarget.setPointerCapture(event.pointerId);
+          onDragStart();
+        }}
+        onPointerMove={(event) => {
+          if (!event.currentTarget.hasPointerCapture(event.pointerId)) return;
+          onDragMove(event.clientY);
+        }}
+        onPointerUp={(event) => onDragEnd(event.clientY)}
+        onPointerCancel={onDragCancel}
+      >
+        <GripVertical className="size-4" />
+      </button>
       <button
         type="button"
         aria-label={done ? "Вернуть в работу" : "Выполнить"}
