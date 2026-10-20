@@ -34,7 +34,10 @@ export function Today() {
   const seconds = spans.filter((span) => span.day === today).reduce((sum, span) => sum + spanSeconds(span), 0);
   const done = tasks.filter((task) => task.completed.slice(0, 10) === today).length;
   const pomos = tasks.reduce((sum, task) => sum + (task.completed.slice(0, 10) === today ? task.pomodoros : 0), 0);
-  const openTasks = tasks.filter((task) => task.status !== "Выполнено").slice(0, 5);
+  const openTasks = tasks
+    .filter((task) => task.status !== "Выполнено")
+    .sort(byUrgency)
+    .slice(0, 5);
   const level = levelInfo(xp);
   const streak = streakCount(tasks, spans);
 
@@ -199,6 +202,17 @@ export function Today() {
       </section>
     </div>
   );
+}
+
+function byUrgency(a: Task, b: Task) {
+  const weight: Record<string, number> = { Срочно: 0, Высокий: 1, Средний: 2, Низкий: 3 };
+  const leftUrgent = a.priority === "Срочно" ? 0 : 1;
+  const rightUrgent = b.priority === "Срочно" ? 0 : 1;
+  if (leftUrgent !== rightUrgent) return leftUrgent - rightUrgent;
+  const leftDay = a.deadline || "9999-99-99";
+  const rightDay = b.deadline || "9999-99-99";
+  if (leftDay !== rightDay) return leftDay < rightDay ? -1 : 1;
+  return (weight[a.priority] ?? 2) - (weight[b.priority] ?? 2);
 }
 
 function Pomodoro({
