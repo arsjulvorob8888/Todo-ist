@@ -5,7 +5,26 @@ import { TimeCategories } from "@/components/more-view";
 import { ScorePips } from "@/components/score-pips";
 import { addDays, clock, dayKey, fmtHm, fmtSpan, formatDay } from "@/lib/dates";
 import { playStart, playStop, playTap } from "@/lib/sound";
-import { dayScore, spanSeconds, usePlanner, compareSpans } from "@/lib/store";
+import { dayScore, spanSeconds, usePlanner, compareSpans, type Span } from "@/lib/store";
+
+type SpanSort = "new" | "old" | "long" | "score" | "category" | "hand";
+
+function timeKey(span: Span) {
+  return span.end || span.start;
+}
+
+function sortSpans(list: Span[], mode: SpanSort) {
+  const items = [...list];
+  if (mode === "hand") return items.sort(compareSpans);
+  if (mode === "old") return items.sort((a, b) => timeKey(a).localeCompare(timeKey(b)) || a.start.localeCompare(b.start));
+  if (mode === "long") return items.sort((a, b) => spanSeconds(b) - spanSeconds(a));
+  if (mode === "score") return items.sort((a, b) => (b.score ?? -1) - (a.score ?? -1) || timeKey(b).localeCompare(timeKey(a)));
+  if (mode === "category") return items.sort((a, b) => a.category.localeCompare(b.category, "ru") || timeKey(b).localeCompare(timeKey(a)));
+  return items.sort((a, b) => {
+    if (!a.end !== !b.end) return a.end ? 1 : -1;
+    return timeKey(b).localeCompare(timeKey(a)) || b.start.localeCompare(a.start);
+  });
+}
 
 export function TimingView() {
   const timeCats = usePlanner((s) => s.timeCats);
@@ -16,7 +35,7 @@ export function TimingView() {
   const updateSpan = usePlanner((s) => s.updateSpan);
   const moveSpan = usePlanner((s) => s.moveSpan);
   const addManualSpan = usePlanner((s) => s.addManualSpan);
-  const [day, setDay] = useState(dayKey());
+  const [sort, setSort] = useState<SpanSort>("new");
   const [manual, setManual] = useState(false);
   const [cats, setCats] = useState(false);
   const [editId, setEditId] = useState("");
@@ -29,7 +48,10 @@ export function TimingView() {
     return () => window.clearInterval(id);
   }, []);
 
-  const daySpans = spans.filter((span) => span.day === day).sort(compareSpans);
+  const daySpans = sortSpans(
+    spans.filter((span) => span.day === day),
+    sort,
+  );
   const open = daySpans.find((span) => !span.end);
   const totals = new Map<string, number>();
   for (const span of daySpans) totals.set(span.category, (totals.get(span.category) ?? 0) + spanSeconds(span));
@@ -110,16 +132,27 @@ export function TimingView() {
 
       <div className="grid gap-4 md:grid-cols-5">
         <section className="md:col-span-3">
-          <div className="mb-2 flex items-center justify-between">
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
             <h2 className="font-display text-2xl">Интервалы</h2>
-            <button type="button" className="text-sm text-gold" onClick={() => setManual(true)}>
-              Вручную
-            </button>
+            <div className="flex items-center gap-2">
+              <select className="rounded-full border border-line bg-panel-2 px-3 py-1 text-sm text-cream" value={sort} onChange={(event) => setSort(event.target.value as SpanSort)} aria-label="Сортировка">
+                <option value="new">Сначала новые</option>
+                <option value="old">Сначала старые</option>
+                <option value="long">По длительности</option>
+                <option value="score">По оценке</option>
+                <option value="category">По категории</option>
+                <option value="hand">Свой порядок</option>
+              </select>
+              <button type="button" className="text-sm text-gold" onClick={() => setManual(true)}>
+                Вручную
+              </button>
+            </div>
           </div>
           <ul className="space-y-2">
             {daySpans.map((span, index) => (
               <li key={span.id} className="rounded-2xl border border-line bg-panel px-3 py-3">
                 <div className="flex items-center gap-2">
+                  {sort === "hand" ? (
                   <span className="flex flex-col">
                     <button
                       type="button"
@@ -146,6 +179,7 @@ export function TimingView() {
                       <ChevronDown className="size-4" />
                     </button>
                   </span>
+                  ) : null}
                   <button type="button" className="w-28 text-left text-sm text-mist" onClick={() => setEditId(span.id)}>
                     {clock(span.start)} – {span.end ? clock(span.end) : "идёт"}
                   </button>
