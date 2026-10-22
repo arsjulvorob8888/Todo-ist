@@ -194,7 +194,8 @@ function HabitRow({
   const left = Math.max(0, goal - streak);
   const [draft, setDraft] = useState(habit.title);
   const [days, setDays] = useState(habit.days);
-  const dots = Array.from({ length: 7 }, (_, index) => addDays(today, index - 6));
+  const monday = addDays(today, 1 - weekdayOf(today));
+  const dots = Array.from({ length: 7 }, (_, index) => addDays(monday, index));
 
   return (
     <li className={`rounded-card border px-3 py-3 ${done ? "border-gold bg-gold/10" : "border-line bg-panel"}`}>
@@ -237,10 +238,11 @@ function HabitRow({
         {dots.map((day) => {
           const hit = habit.done.includes(day);
           const due = habitDue(habit, day);
+          const future = day > today;
           const letter = WEEK.find((item) => item.id === weekdayOf(day))?.label ?? "";
           return (
             <span key={day} title={day} className="text-center">
-              <span className={`block h-2 rounded-sm ${hit ? "bg-gold" : due ? "bg-panel-2" : "bg-transparent"} ${day === today ? "ring-1 ring-gold" : ""}`} />
+              <span className={`block h-2 rounded-sm ${hit ? "bg-gold" : future ? "bg-panel-2/35" : due ? "bg-panel-2" : "bg-transparent"} ${day === today ? "ring-1 ring-gold" : ""}`} />
               <span className={`mt-1 block text-[10px] ${day === today ? "text-gold" : "text-mist"}`}>{letter}</span>
             </span>
           );
