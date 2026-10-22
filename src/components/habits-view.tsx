@@ -55,6 +55,16 @@ export function HabitsView() {
 
   return (
     <div className="space-y-6">
+      <header className="flex items-end justify-between gap-3">
+        <div>
+          <p className="text-sm text-mist">Не рви цепь</p>
+          <h1 className="font-display text-4xl">Привычки</h1>
+        </div>
+        <p className="font-display text-3xl text-gold">
+          {closed}/{due.length || 0}
+        </p>
+      </header>
+
       <section className="rounded-card border border-line bg-panel p-4">
         <form
           className="space-y-3"
@@ -100,19 +110,10 @@ export function HabitsView() {
         </div>
       </section>
 
-      <header className="flex items-end justify-between gap-3">
-        <div>
-          <p className="text-sm text-mist">Не рви цепь</p>
-          <h1 className="font-display text-4xl">Привычки</h1>
-        </div>
-        <p className="font-display text-3xl text-gold">
-          {closed}/{due.length || 0}
-        </p>
-      </header>
+      <HabitList title="Сегодня" habits={due} today={today} editing={editing} onEdit={setEditing} onToggle={mark} onFocus={focusHabit} onSave={updateHabit} onDelete={deleteHabit} />
 
       <HabitBoard habits={habits} today={today} onToggle={mark} />
 
-      <HabitList title="Сегодня" habits={due} today={today} editing={editing} onEdit={setEditing} onToggle={mark} onFocus={focusHabit} onSave={updateHabit} onDelete={deleteHabit} />
       {later.length ? (
         <HabitList title="В другие дни" habits={later} today={today} editing={editing} onEdit={setEditing} onToggle={mark} onFocus={focusHabit} onSave={updateHabit} onDelete={deleteHabit} />
       ) : null}
