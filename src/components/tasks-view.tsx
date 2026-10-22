@@ -456,16 +456,10 @@ function TaskForm({
           {categories.map((name) => (
             <option key={name} value={name}>
               {name}
-              {catProject[name] ? ` · ${catProject[name]}` : ""}
             </option>
           ))}
         </select>
       </Field>
-      {category ? (
-        <p className={`-mt-2 mb-3 text-sm ${catProject[category] ? "text-mist" : "text-ember"}`}>
-          {catProject[category] ? `Проект: ${catProject[category]}` : "Проект не назначен. Открой категории в тайминге и выбери проект."}
-        </p>
-      ) : null}
       <Field label="Метки">
         <div className="flex flex-wrap gap-2">
           {labels.map((label) => {
