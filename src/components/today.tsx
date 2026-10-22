@@ -2,13 +2,14 @@ import { Link } from "@tanstack/react-router";
 import { Flame, Zap } from "lucide-react";
 import { useEffect, useState } from "react";
 import { ScorePips } from "@/components/score-pips";
-import { dayKey, fmtHm, fmtSpan, formatDay } from "@/lib/dates";
+import { dayKey, fmtHm, fmtSpan, formatDay, nextCelebration } from "@/lib/dates";
 import { quoteForNow } from "@/lib/quotes";
 import { playHabit, playStart, playTap, playWin } from "@/lib/sound";
-import { dayScore, habitDue, habitStreak, levelInfo, spanSeconds, streakCount, usePlanner, type Pomo, type Task } from "@/lib/store";
+import { dayScore, habitDue, habitStreak, levelInfo, spanSeconds, streakCount, usePlanner, type Contact, type Pomo, type Task } from "@/lib/store";
 
 export function Today() {
   const habits = usePlanner((s) => s.habits);
+  const contacts = usePlanner((s) => s.contacts);
   const tasks = usePlanner((s) => s.tasks);
   const ensureHabits = usePlanner((s) => s.ensureHabits);
   const toggleHabit = usePlanner((s) => s.toggleHabit);
@@ -64,6 +65,8 @@ export function Today() {
         <p className="text-sm tracking-wide text-mist uppercase">Сегодня</p>
         <h1 className="font-display text-4xl capitalize">{formatDay(today)}</h1>
       </header>
+
+      <Celebrations contacts={contacts} today={today} />
 
       <section className="grid gap-3 md:grid-cols-3">
         <div className="grid gap-3 md:col-span-2">
@@ -424,5 +427,43 @@ function Rings({ time, tasks, pomos }: { time: number; tasks: number; pomos: num
         );
       })}
     </svg>
+  );
+}
+
+function Celebrations({ contacts, today }: { contacts: Contact[]; today: string }) {
+  const rows = contacts
+    .map((person) => ({ person, next: nextCelebration(person.birthday, today) }))
+    .filter((item): item is { person: Contact; next: NonNullable<ReturnType<typeof nextCelebration>> } => item.next != null && item.next.days <= 1)
+    .sort((a, b) => a.next.days - b.next.days);
+  if (rows.length === 0) return null;
+  const todayRows = rows.filter((item) => item.next.days === 0);
+  const tomorrowRows = rows.filter((item) => item.next.days === 1);
+  return (
+    <section className="rounded-card border border-gold bg-panel p-4">
+      <p className="text-xs tracking-wide text-gold uppercase">Не забудь поздравить</p>
+      {todayRows.length ? <CelebrationLine label="Сегодня" rows={todayRows} /> : null}
+      {tomorrowRows.length ? <CelebrationLine label="Завтра" rows={tomorrowRows} /> : null}
+    </section>
+  );
+}
+
+function CelebrationLine({
+  label,
+  rows,
+}: {
+  label: string;
+  rows: { person: Contact; next: { day: string; year?: number } }[];
+}) {
+  return (
+    <p className="mt-2 text-sm">
+      <span className="text-mist">{label}: </span>
+      {rows
+        .map(({ person, next }) => {
+          const kind = person.kind === "holiday" ? "праздник" : "день рождения";
+          const age = next.year && person.kind !== "holiday" ? Number(next.day.slice(0, 4)) - next.year : 0;
+          return `${person.name} — ${kind}${age > 0 ? `, ${age}` : ""}`;
+        })
+        .join(" · ")}
+    </p>
   );
 }

@@ -63,7 +63,7 @@ export type Goal = {
   percent?: number;
   kpis?: Kpi[];
 };
-export type Contact = { id: string; name: string; group: string; birthday: string };
+export type Contact = { id: string; name: string; group: string; birthday: string; kind?: "birthday" | "holiday" };
 export type Idea = { id: string; title: string; note: string };
 export type Book = { id: string; title: string; author: string; date: string };
 
@@ -245,6 +245,8 @@ type State = {
   addLabel: (name: string) => void;
   deleteLabel: (id: string) => void;
   addContact: (contact: Omit<Contact, "id">) => void;
+  updateContact: (id: string, patch: Partial<Omit<Contact, "id">>) => void;
+  deleteContact: (id: string) => void;
   addIdea: (idea: Omit<Idea, "id">) => void;
   addBook: (book: Omit<Book, "id" | "date">) => void;
   ensureHabits: () => void;
@@ -535,6 +537,8 @@ export const usePlanner = create<State>()(
           tasks: get().tasks.map((task) => ({ ...task, labelIds: (task.labelIds ?? []).filter((labelId) => labelId !== id) })),
         }),
       addContact: (contact) => set({ contacts: [...get().contacts, { ...contact, id: uid() }] }),
+      updateContact: (id, patch) => set({ contacts: get().contacts.map((item) => (item.id === id ? { ...item, ...patch } : item)) }),
+      deleteContact: (id) => set({ contacts: get().contacts.filter((item) => item.id !== id) }),
       addIdea: (idea) => set({ ideas: [{ ...idea, id: uid() }, ...get().ideas] }),
       addBook: (book) => set({ books: [{ ...book, id: uid(), date: dayKey() }, ...get().books] }),
       ensureHabits: () => {

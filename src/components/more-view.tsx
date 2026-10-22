@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Field, inputClass, Modal } from "@/components/modal";
+import { dayKey, monthDayLabel, nextCelebration } from "@/lib/dates";
 import { usePlanner } from "@/lib/store";
 
 const TITLES = {
@@ -126,6 +127,7 @@ export function LibraryView({ section }: { section: keyof typeof TITLES }) {
   const ideas = usePlanner((s) => s.ideas);
   const books = usePlanner((s) => s.books);
   const addContact = usePlanner((s) => s.addContact);
+  const deleteContact = usePlanner((s) => s.deleteContact);
   const addIdea = usePlanner((s) => s.addIdea);
   const addBook = usePlanner((s) => s.addBook);
 
@@ -150,7 +152,9 @@ export function LibraryView({ section }: { section: keyof typeof TITLES }) {
           onDelete={deleteCategory}
         />
       ) : null}
-      {section === "people" ? <People contacts={contacts} onAdd={addContact} /> : null}
+      {section === "people" ? (
+        <People contacts={contacts} onAdd={addContact} onDelete={deleteContact} />
+      ) : null}
       {section === "ideas" ? <Ideas ideas={ideas} onAdd={addIdea} /> : null}
       {section === "books" ? <Books books={books} onAdd={addBook} /> : null}
     </div>
@@ -239,26 +243,113 @@ function Cats({
 function People({
   contacts,
   onAdd,
+  onDelete,
 }: {
-  contacts: { id: string; name: string; group: string; birthday: string }[];
-  onAdd: (contact: { name: string; group: string; birthday: string }) => void;
+  contacts: { id: string; name: string; group: string; birthday: string; kind?: "birthday" | "holiday" }[];
+  onAdd: (contact: { name: string; group: string; birthday: string; kind?: "birthday" | "holiday" }) => void;
+  onDelete: (id: string) => void;
 }) {
+  const today = dayKey();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [group, setGroup] = useState("");
   const [birthday, setBirthday] = useState("");
+  const [eventName, setEventName] = useState("");
+  const [kind, setKind] = useState<"birthday" | "holiday">("birthday");
+  const [eventDate, setEventDate] = useState("");
+  const celebrations = contacts
+    .map((person) => ({ person, next: nextCelebration(person.birthday, today) }))
+    .filter((item): item is { person: (typeof contacts)[number]; next: NonNullable<ReturnType<typeof nextCelebration>> } => item.next != null)
+    .sort((a, b) => a.next.days - b.next.days || a.person.name.localeCompare(b.person.name, "ru"));
+  const soon = celebrations.filter((item) => item.next.days <= 14);
+  const dated = new Set(celebrations.map((item) => item.person.id));
+
   return (
-    <div>
-      <button type="button" className="mb-3 rounded-full bg-gold px-4 py-2 text-ink" onClick={() => setOpen(true)}>
-        Человек
-      </button>
-      <ul className="space-y-2">
-        {contacts.map((person) => (
-          <li key={person.id} className="rounded-2xl border border-line bg-panel px-3 py-3">
-            {person.name} · {person.group || "без группы"} · {person.birthday || "день рождения не указан"}
-          </li>
-        ))}
-      </ul>
+    <div className="space-y-6">
+      <section className="rounded-card border border-line bg-panel p-4">
+        <h2 className="font-display text-2xl">Ближайшие 2 недели</h2>
+        {soon.length === 0 ? <p className="mt-2 text-sm text-mist">В ближайшие 14 дней дней рождения и праздников нет.</p> : null}
+        <ul className="mt-3 space-y-2">
+          {soon.map(({ person, next }) => (
+            <li key={person.id} className="flex items-center justify-between gap-3 text-sm">
+              <span>
+                {person.name}
+                <span className="text-mist"> · {person.kind === "holiday" ? "праздник" : "день рождения"} · {monthDayLabel(person.birthday)}</span>
+              </span>
+              <span className="shrink-0 text-gold">{next.days === 0 ? "сегодня" : next.days === 1 ? "завтра" : `через ${next.days} дн.`}</span>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section className="rounded-card border border-line bg-panel p-4">
+        <h2 className="font-display text-2xl">Дни рождения и праздники</h2>
+        <form
+          className="mt-3 space-y-3"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (!eventName.trim() || !eventDate) return;
+            onAdd({
+              name: eventName.trim(),
+              group: kind === "holiday" ? "Праздник" : "День рождения",
+              birthday: eventDate,
+              kind,
+            });
+            setEventName("");
+            setEventDate("");
+          }}
+        >
+          <input className={inputClass} placeholder="Кого поздравить" value={eventName} onChange={(event) => setEventName(event.target.value)} />
+          <div className="flex flex-wrap gap-2">
+            <button type="button" className={`rounded-full px-3 py-1 text-sm ${kind === "birthday" ? "bg-gold text-ink" : "bg-panel-2 text-mist"}`} onClick={() => setKind("birthday")}>
+              День рождения
+            </button>
+            <button type="button" className={`rounded-full px-3 py-1 text-sm ${kind === "holiday" ? "bg-gold text-ink" : "bg-panel-2 text-mist"}`} onClick={() => setKind("holiday")}>
+              Праздник
+            </button>
+          </div>
+          <input className={inputClass} type="date" value={eventDate} onChange={(event) => setEventDate(event.target.value)} aria-label="Дата" />
+          <button type="submit" className="rounded-full bg-gold px-4 py-2 text-ink">
+            Добавить
+          </button>
+        </form>
+        <ul className="mt-4 space-y-2">
+          {celebrations.map(({ person, next }) => (
+            <li key={person.id} className="flex items-center justify-between gap-3 rounded-2xl border border-line px-3 py-3">
+              <span>
+                {person.name}
+                <span className="mt-0.5 block text-xs text-mist">
+                  {person.kind === "holiday" ? "Праздник" : "День рождения"} · {monthDayLabel(person.birthday)}
+                  {next.year && person.kind !== "holiday" && next.days === 0 ? ` · исполняется ${Number(today.slice(0, 4)) - next.year}` : ""}
+                </span>
+              </span>
+              <button type="button" className="text-sm text-ember" onClick={() => onDelete(person.id)}>
+                Удалить
+              </button>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section>
+        <button type="button" className="mb-3 rounded-full bg-gold px-4 py-2 text-ink" onClick={() => setOpen(true)}>
+          Человек
+        </button>
+        <ul className="space-y-2">
+          {contacts
+            .filter((person) => !dated.has(person.id))
+            .map((person) => (
+              <li key={person.id} className="flex items-center justify-between gap-3 rounded-2xl border border-line bg-panel px-3 py-3">
+                <span>
+                  {person.name} · {person.group || "без группы"}
+                </span>
+                <button type="button" className="text-sm text-ember" onClick={() => onDelete(person.id)}>
+                  Удалить
+                </button>
+              </li>
+            ))}
+        </ul>
+      </section>
       {open ? (
         <Modal title="Контакт" onClose={() => setOpen(false)}>
           <Field label="Имя">
@@ -268,14 +359,17 @@ function People({
             <input className={inputClass} value={group} onChange={(e) => setGroup(e.target.value)} />
           </Field>
           <Field label="День рождения">
-            <input className={inputClass} value={birthday} onChange={(e) => setBirthday(e.target.value)} placeholder="14.05" />
+            <input className={inputClass} type="date" value={birthday} onChange={(e) => setBirthday(e.target.value)} />
           </Field>
           <button
             type="button"
             className="w-full rounded-full bg-gold py-3 text-ink"
             onClick={() => {
               if (!name.trim()) return;
-              onAdd({ name: name.trim(), group, birthday });
+              onAdd({ name: name.trim(), group, birthday, kind: birthday ? "birthday" : undefined });
+              setName("");
+              setGroup("");
+              setBirthday("");
               setOpen(false);
             }}
           >
