@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Field, inputClass, Modal } from "@/components/modal";
-import { dayKey, monthDayLabel, nextCelebration } from "@/lib/dates";
+import { dayKey, monthDayLabel, nextCelebration, parseCelebration } from "@/lib/dates";
 import { usePlanner } from "@/lib/store";
 
 const TITLES = {
@@ -257,10 +257,17 @@ function People({
   const [eventName, setEventName] = useState("");
   const [kind, setKind] = useState<"birthday" | "holiday">("birthday");
   const [eventDate, setEventDate] = useState("");
+  const [sort, setSort] = useState<"soon" | "asc" | "desc">("soon");
   const celebrations = contacts
     .map((person) => ({ person, next: nextCelebration(person.birthday, today) }))
     .filter((item): item is { person: (typeof contacts)[number]; next: NonNullable<ReturnType<typeof nextCelebration>> } => item.next != null)
     .sort((a, b) => a.next.days - b.next.days || a.person.name.localeCompare(b.person.name, "ru"));
+  const listed = [...celebrations].sort((a, b) => {
+    if (sort === "soon") return a.next.days - b.next.days || a.person.name.localeCompare(b.person.name, "ru");
+    const left = calendarOrder(a.person.birthday);
+    const right = calendarOrder(b.person.birthday);
+    return sort === "asc" ? left - right : right - left;
+  });
   const soon = celebrations.filter((item) => item.next.days <= 14);
   const dated = new Set(celebrations.map((item) => item.person.id));
 
@@ -313,13 +320,32 @@ function People({
             Добавить
           </button>
         </form>
+        <div className="mt-4 flex flex-wrap gap-2">
+          {(
+            [
+              ["soon", "Ближайшие"],
+              ["asc", "По возрастанию"],
+              ["desc", "По убыванию"],
+            ] as const
+          ).map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setSort(id)}
+              className={`rounded-full px-3 py-1 text-sm ${sort === id ? "bg-gold text-ink" : "bg-panel-2 text-mist"}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
         <ul className="mt-4 space-y-2">
-          {celebrations.map(({ person, next }) => (
+          {listed.map(({ person, next }) => (
             <li key={person.id} className="flex items-center justify-between gap-3 rounded-2xl border border-line px-3 py-3">
               <span>
                 {person.name}
                 <span className="mt-0.5 block text-xs text-mist">
                   {person.kind === "holiday" ? "Праздник" : "День рождения"} · {monthDayLabel(person.birthday)}
+                  {sort === "soon" ? ` · ${next.days === 0 ? "сегодня" : next.days === 1 ? "завтра" : `через ${next.days} дн.`}` : ""}
                   {next.year && person.kind !== "holiday" && next.days === 0 ? ` · исполняется ${Number(today.slice(0, 4)) - next.year}` : ""}
                 </span>
               </span>
@@ -379,6 +405,12 @@ function People({
       ) : null}
     </div>
   );
+}
+
+function calendarOrder(raw: string) {
+  const parsed = parseCelebration(raw);
+  if (!parsed) return 0;
+  return parsed.month * 32 + parsed.day;
 }
 
 function Ideas({
