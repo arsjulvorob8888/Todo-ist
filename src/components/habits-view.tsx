@@ -37,10 +37,10 @@ export function HabitsView() {
   const later = habits.filter((habit) => !habitDue(habit, today));
   const closed = due.filter((habit) => habit.done.includes(today)).length;
 
-  function mark(id: string) {
-    const result = toggleHabit(id);
+  function mark(id: string, day?: string) {
+    const result = toggleHabit(id, day);
     if (!result) return;
-    if (result.undone) playTap();
+    if (result.quiet || result.undone) playTap();
     else if (result.allDone) playWin();
     else playHabit();
   }
@@ -56,6 +56,8 @@ export function HabitsView() {
           {closed}/{due.length || 0}
         </p>
       </header>
+
+      <HabitBoard habits={habits} today={today} onToggle={mark} />
 
       <section className="rounded-card border border-line bg-panel p-4">
         <form
@@ -254,5 +256,64 @@ function HabitRow({
         </form>
       ) : null}
     </li>
+  );
+}
+
+function HabitBoard({ habits, today, onToggle }: { habits: Habit[]; today: string; onToggle: (id: string, day?: string) => void }) {
+  const cells = Array.from({ length: 84 }, (_, index) => addDays(today, index - 83));
+  if (habits.length === 0) return null;
+  return (
+    <section className="rounded-card border border-line bg-panel p-4">
+      <div className="mb-3 flex items-end justify-between gap-3">
+        <h2 className="font-display text-2xl">12 недель</h2>
+        <p className="text-xs text-mist">одна таблица на все привычки</p>
+      </div>
+      <div className="grid grid-cols-12 gap-1">
+        {cells.map((day) => {
+          const due = habits.filter((habit) => habitDue(habit, day) && habit.created.slice(0, 10) <= day);
+          const hit = due.filter((habit) => habit.done.includes(day)).length;
+          const alpha = due.length === 0 ? 0.08 : 0.18 + (hit / due.length) * 0.82;
+          return (
+            <div
+              key={day}
+              title={`${day} · ${hit}/${due.length || 0}`}
+              className={`aspect-square rounded-sm bg-gold ${day === today ? "ring-1 ring-cream" : ""}`}
+              style={{ opacity: alpha }}
+            />
+          );
+        })}
+      </div>
+      <ul className="mt-4 space-y-2">
+        {habits.map((habit) => (
+          <li key={habit.id} className="grid grid-cols-[5.5rem_1fr] items-center gap-2">
+            <p className="truncate text-xs text-mist" title={habit.title}>
+              {habit.title}
+            </p>
+            <div className="grid grid-cols-12 gap-1">
+              {cells.map((day) => {
+                const started = habit.created.slice(0, 10) <= day;
+                const due = started && habitDue(habit, day);
+                const hit = due && habit.done.includes(day);
+                const missed = due && !hit && day < today;
+                const title = `${habit.title} · ${day}${hit ? " · сделано" : missed ? " · пропуск" : due ? "" : " · не в расписании"}`;
+                return (
+                  <button
+                    key={day}
+                    type="button"
+                    title={title}
+                    disabled={!due || day > today}
+                    onClick={() => onToggle(habit.id, day)}
+                    className={`aspect-square rounded-sm disabled:cursor-default ${
+                      hit ? "bg-gold" : missed ? "bg-ember/50" : due ? "bg-panel-2" : "bg-panel-2/40"
+                    } ${day === today ? "ring-1 ring-cream" : ""}`}
+                  />
+                );
+              })}
+            </div>
+          </li>
+        ))}
+      </ul>
+      <p className="mt-3 text-xs text-mist">Золотое — сделано, рыжее — пропуск, тусклое — день не в расписании. Клетка отмечается нажатием.</p>
+    </section>
   );
 }

@@ -249,7 +249,7 @@ type State = {
   addHabit: (title: string, days?: number[]) => void;
   updateHabit: (id: string, patch: Partial<Pick<Habit, "title" | "days">>) => void;
   deleteHabit: (id: string) => void;
-  toggleHabit: (id: string) => { undone: boolean; allDone: boolean } | null;
+  toggleHabit: (id: string, day?: string) => { undone: boolean; allDone: boolean; quiet?: boolean } | null;
   focusHabit: (id: string) => void;
   startPomo: (minutes: number, taskId?: string, mode?: "focus" | "break") => void;
   focusTask: (id: string, minutes?: number) => void;
@@ -555,18 +555,20 @@ export const usePlanner = create<State>()(
           ),
         }),
       deleteHabit: (id) => set({ habits: get().habits.filter((habit) => habit.id !== id) }),
-      toggleHabit: (id) => {
+      toggleHabit: (id, day) => {
         get().ensureHabits();
         const habit = get().habits.find((item) => item.id === id);
         if (!habit) return null;
         const today = dayKey();
-        const undone = habit.done.includes(today);
-        const done = undone ? habit.done.filter((day) => day !== today) : [...habit.done, today];
-        const best = Math.max(habit.best || 0, habitStreak(done, today));
+        const target = day && day <= today ? day : today;
+        const live = target === today;
+        const undone = habit.done.includes(target);
+        const done = undone ? habit.done.filter((item) => item !== target) : [...habit.done, target];
+        const best = Math.max(habit.best || 0, habitBest(done));
         const habits = get().habits.map((item) => (item.id === id ? { ...item, done, best } : item));
-        if (undone) {
+        if (undone || !live) {
           set({ habits });
-          return { undone: true, allDone: false };
+          return { undone, allDone: false, quiet: !live };
         }
         const allDone =
           habits.some((item) => habitDue(item, today)) &&
@@ -771,6 +773,19 @@ export function habitDue(habit: Pick<Habit, "days">, day = dayKey()) {
   return !habit.days?.length || habit.days.includes(weekdayOf(day));
 }
 
+export function habitBest(done: string[]) {
+  const days = [...new Set(done)].sort();
+  let best = 0;
+  let run = 0;
+  let prev = "";
+  for (const day of days) {
+    if (prev && addDays(prev, 1) === day) run += 1;
+    else run = 1;
+    if (run > best) best = run;
+    prev = day;
+  }
+  return best;
+}
 export function habitStreak(done: string[], today = dayKey()) {
   const set = new Set(done);
   let cursor = set.has(today) ? today : addDays(today, -1);
