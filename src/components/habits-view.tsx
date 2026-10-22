@@ -16,6 +16,14 @@ const WEEK = [
 
 const IDEAS = ["Вода", "Зарядка", "Чтение", "Прогулка", "Без соцсетей", "Сон до 23:00"];
 
+function daysWord(count: number) {
+  const tail = count % 10;
+  const hundred = count % 100;
+  if (tail === 1 && hundred !== 11) return "день";
+  if (tail >= 2 && tail <= 4 && (hundred < 12 || hundred > 14)) return "дня";
+  return "дней";
+}
+
 export function HabitsView() {
   const habits = usePlanner((s) => s.habits);
   const ensureHabits = usePlanner((s) => s.ensureHabits);
@@ -180,6 +188,9 @@ function HabitRow({
 }) {
   const done = habit.done.includes(today);
   const streak = habitStreak(habit.done, today);
+  const goal = streak < 21 ? 21 : 66;
+  const locked = streak >= 66;
+  const left = Math.max(0, goal - streak);
   const [draft, setDraft] = useState(habit.title);
   const [days, setDays] = useState(habit.days);
   const dots = Array.from({ length: 7 }, (_, index) => addDays(today, index - 6));
@@ -207,16 +218,30 @@ function HabitRow({
           25 мин
         </button>
       </div>
-      <div className="mt-3 flex gap-1">
+      <div className="mt-3">
+        <div className="mb-1 flex justify-between gap-3 text-xs text-mist">
+          <span>{locked ? "Привычка закрепилась" : streak < 21 ? "До формирования" : "До закрепления"}</span>
+          <span className="text-gold">{locked ? `${streak} дней подряд` : `${streak} из ${goal}`}</span>
+        </div>
+        <div className="h-2 overflow-hidden rounded-full bg-panel-2">
+          <div className="h-full rounded-full bg-gold" style={{ width: `${Math.min(100, (streak / goal) * 100)}%` }} />
+        </div>
+        <p className="mt-1 text-xs text-mist">
+          {locked
+            ? "66 дней подряд — действие уже держится само."
+            : `Ещё ${left} ${daysWord(left)} подряд. 21 — привычка формируется, 66 — закрепляется. Пропуск обнуляет серию.`}
+        </p>
+      </div>
+      <div className="mt-3 grid grid-cols-7 gap-1">
         {dots.map((day) => {
           const hit = habit.done.includes(day);
           const due = habitDue(habit, day);
+          const letter = WEEK.find((item) => item.id === weekdayOf(day))?.label ?? "";
           return (
-            <span
-              key={day}
-              title={day}
-              className={`h-2 flex-1 rounded-full ${hit ? "bg-gold" : due ? "bg-panel-2" : "bg-transparent"} ${day === today ? "ring-1 ring-gold" : ""}`}
-            />
+            <span key={day} title={day} className="text-center">
+              <span className={`block h-2 rounded-sm ${hit ? "bg-gold" : due ? "bg-panel-2" : "bg-transparent"} ${day === today ? "ring-1 ring-gold" : ""}`} />
+              <span className={`mt-1 block text-[10px] ${day === today ? "text-gold" : "text-mist"}`}>{letter}</span>
+            </span>
           );
         })}
       </div>
