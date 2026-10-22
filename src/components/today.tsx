@@ -330,6 +330,7 @@ function Pomodoro({
             Pomidorro
           </p>
           <h2 className="font-display text-3xl">{active ? fmtSpan(left) : "25 минут одного дела"}</h2>
+          {linked ? <p className="mt-1 font-display text-xl">{linked.title}</p> : null}
           <p className="mt-1 max-w-xl text-sm text-mist">
             {pomo.mode === "break"
               ? "Фокус закрыт. Пять минут не трогай задачу, потом следующий круг."

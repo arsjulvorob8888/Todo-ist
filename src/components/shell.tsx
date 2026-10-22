@@ -41,6 +41,8 @@ function Ready({ children }: { children: ReactNode }) {
   const completeTask = usePlanner((s) => s.completeTask);
   const burst = usePlanner((s) => s.burst);
   const pomo = usePlanner((s) => s.pomo);
+  const tasks = usePlanner((s) => s.tasks);
+  const habits = usePlanner((s) => s.habits);
   const pausePomo = usePlanner((s) => s.pausePomo);
   const stopPomo = usePlanner((s) => s.stopPomo);
   const finishPomo = usePlanner((s) => s.finishPomo);
@@ -101,6 +103,10 @@ function Ready({ children }: { children: ReactNode }) {
 
   const left = pomo.running ? Math.max(0, Math.round((pomo.endsAt - now) / 1000)) : pomo.remaining;
   const showDock = pomo.running || (pomo.remaining > 0 && pomo.remaining !== pomo.minutes * 60);
+  const linkedTask = tasks.find((task) => task.id === pomo.taskId);
+  const linkedHabit = habits.find((habit) => habit.id === pomo.taskId);
+  const focusTitle = linkedTask?.title || linkedHabit?.title || "";
+  const focusHint = linkedTask?.category || (linkedHabit ? "Привычки" : "");
 
   return (
     <div className="min-h-screen bg-ink font-sans text-cream">
@@ -146,9 +152,11 @@ function Ready({ children }: { children: ReactNode }) {
       </main>
 
       {showDock ? (
-        <div className="fixed right-4 bottom-24 z-30 flex items-center gap-3 rounded-card border border-gold bg-panel px-4 py-3 md:bottom-6">
-          <div>
+        <div className="fixed right-4 bottom-24 z-30 flex max-w-[min(24rem,calc(100vw-2rem))] items-center gap-3 rounded-card border border-gold bg-panel px-4 py-3 md:bottom-6">
+          <div className="min-w-0">
             <p className="text-xs tracking-wide text-gold uppercase">{pomo.mode === "break" ? "Перерыв" : "Помидор"}</p>
+            <p className="truncate text-sm">{focusTitle || "Без задачи"}</p>
+            {focusHint ? <p className="truncate text-xs text-mist">{focusHint}</p> : null}
             <p className="font-display text-2xl">{fmtSpan(left)}</p>
           </div>
           <button type="button" onClick={pausePomo} className="rounded-full bg-panel-2 px-3 py-2 text-sm">

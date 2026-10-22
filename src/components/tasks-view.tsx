@@ -13,6 +13,7 @@ export function TasksView() {
   const tasks = usePlanner((s) => s.tasks);
   const projects = usePlanner((s) => s.projects);
   const addTask = usePlanner((s) => s.addTask);
+  const pomo = usePlanner((s) => s.pomo);
   const completeTask = usePlanner((s) => s.completeTask);
   const deleteTask = usePlanner((s) => s.deleteTask);
   const updateTask = usePlanner((s) => s.updateTask);
@@ -211,6 +212,7 @@ export function TasksView() {
               playStart();
               focusTask(task.id, 25);
             }}
+            live={pomo.taskId === task.id && (pomo.running || pomo.remaining !== pomo.minutes * 60)}
           />
         ))}
       </ul>
@@ -315,6 +317,7 @@ function TaskRow({
   onEdit,
   onProgress,
   onPomo,
+  live,
 }: {
   task: Task;
   now: number;
@@ -330,6 +333,7 @@ function TaskRow({
   onEdit: () => void;
   onProgress: () => void;
   onPomo: () => void;
+  live: boolean;
 }) {
   const done = task.status === "Выполнено";
   const look = priorityLook(task.priority, done);
@@ -337,7 +341,7 @@ function TaskRow({
   return (
     <li
       data-id={task.id}
-      className={`flex items-center gap-3 rounded-card border border-l-4 px-3 py-3 ${look.rail} ${look.wash} ${dragging ? "border-gold opacity-60" : over ? "border-gold" : "border-line"}`}
+      className={`flex items-center gap-3 rounded-card border border-l-4 px-3 py-3 ${look.rail} ${look.wash} ${live ? "border-gold ring-2 ring-gold" : dragging ? "border-gold opacity-60" : over ? "border-gold" : "border-line"}`}
     >
       <button
         type="button"
@@ -370,6 +374,7 @@ function TaskRow({
       <div className="min-w-0 flex-1">
         <p className={`flex flex-wrap items-center gap-2 ${done ? "text-mist line-through" : ""}`}>
           <span>{task.title}</span>
+          {live ? <span className="rounded-full bg-gold px-2 py-0.5 text-[11px] font-semibold text-ink">Помидор</span> : null}
           <span className={`rounded-full px-2 py-0.5 text-[11px] leading-none font-semibold tracking-wide ${look.pill}`}>{task.priority}</span>
         </p>
         <p className="text-xs text-mist">
@@ -404,8 +409,8 @@ function TaskRow({
           В работе
         </button>
       ) : null}
-      <button type="button" onClick={onPomo} className="rounded-full bg-gold px-3 py-2 text-sm text-ink">
-        25 мин
+      <button type="button" onClick={onPomo} className={`rounded-full px-3 py-2 text-sm ${live ? "bg-ink text-gold ring-2 ring-gold" : "bg-gold text-ink"}`}>
+        {live ? "Идёт" : "25 мин"}
       </button>
       <button type="button" onClick={onDelete} className="text-sm text-ember">
         Удалить
