@@ -18,6 +18,8 @@ export function TimeCategories() {
   const renameCategory = usePlanner((s) => s.renameCategory);
   const deleteCategory = usePlanner((s) => s.deleteCategory);
   const placeCategory = usePlanner((s) => s.placeCategory);
+  const scoreOff = usePlanner((s) => s.scoreOff ?? []);
+  const setCategoryScore = usePlanner((s) => s.setCategoryScore);
   const [name, setName] = useState("");
   const [project, setProject] = useState("");
   const [edit, setEdit] = useState<string | null>(null);
@@ -56,7 +58,16 @@ export function TimeCategories() {
                 {catProject[item] ? `Проект: ${catProject[item]}` : "Проект не назначен"}
               </span>
             </span>
-            <span className="flex gap-3 text-sm">
+            <span className="flex shrink-0 items-center gap-3 text-sm">
+              <label className="flex items-center gap-1.5 text-xs text-mist" title="Нужна ли оценка этого действия">
+                <input
+                  type="checkbox"
+                  className="size-4 accent-gold"
+                  checked={!scoreOff.includes(item)}
+                  onChange={(event) => setCategoryScore(item, event.target.checked)}
+                />
+                Оценка
+              </label>
               <button
                 type="button"
                 className="text-gold"

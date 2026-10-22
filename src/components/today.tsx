@@ -14,6 +14,7 @@ export function Today() {
   const toggleHabit = usePlanner((s) => s.toggleHabit);
   const spans = usePlanner((s) => s.spans);
   const xp = usePlanner((s) => s.xp);
+  const scoreOff = usePlanner((s) => s.scoreOff ?? []);
   const timeCats = usePlanner((s) => s.timeCats);
   const completeTask = usePlanner((s) => s.completeTask);
   const startSpan = usePlanner((s) => s.startSpan);
@@ -38,7 +39,7 @@ export function Today() {
 
   const open = spans.find((span) => span.day === today && !span.end);
   const finished = spans.filter((span) => span.day === today && span.end).sort((a, b) => new Date(b.start).getTime() - new Date(a.start).getTime());
-  const unrated = finished.filter((span) => !span.score);
+  const unrated = finished.filter((span) => !span.score && !scoreOff.includes(span.category));
   const score = dayScore(spans, today);
   const seconds = spans.filter((span) => span.day === today).reduce((sum, span) => sum + spanSeconds(span), 0);
   const done = tasks.filter((task) => task.completed.slice(0, 10) === today).length;

@@ -196,6 +196,7 @@ type State = {
   boards: Board[];
   labels: Mark[];
   timeCats: string[];
+  scoreOff: string[];
   catProject: Record<string, string>;
   routine: RoutineBlock[];
   routineDone: Record<string, string[]>;
@@ -234,6 +235,7 @@ type State = {
   addCategory: (kind: "project" | "time", name: string, project?: string) => void;
   placeCategory: (name: string, project: string) => void;
   deleteCategory: (kind: "project" | "time", name: string) => void;
+  setCategoryScore: (name: string, scored: boolean) => void;
   addRoutine: (category: string, start: string, end: string) => void;
   updateRoutine: (id: string, patch: Partial<RoutineBlock>) => void;
   moveRoutine: (id: string, direction: -1 | 1) => void;
@@ -279,6 +281,7 @@ export const usePlanner = create<State>()(
       boards: makeBoards(PROJECTS),
       labels: LABELS,
       timeCats: TIME,
+      scoreOff: [],
       catProject: {},
       routine: [],
       routineDone: {},
@@ -453,6 +456,7 @@ export const usePlanner = create<State>()(
           catProject[clean] = home;
           set({
             timeCats: get().timeCats.map((name) => (name === from ? clean : name)),
+            scoreOff: (get().scoreOff ?? []).map((name) => (name === from ? clean : name)),
             spans: get().spans.map((span) => (span.category === from ? { ...span, category: clean } : span)),
             routine: (get().routine ?? []).map((block) => (block.category === from ? { ...block, category: clean } : block)),
             tasks: get().tasks.map((task) => (task.category === from ? { ...task, category: clean } : task)),
@@ -481,6 +485,7 @@ export const usePlanner = create<State>()(
           set({
             timeCats: [...get().timeCats, clean].sort((a, b) => a.localeCompare(b, "ru")),
             catProject: { ...(get().catProject ?? {}), [clean]: home },
+            ...(quietCategory(clean) ? { scoreOff: [...new Set([...(get().scoreOff ?? []), clean])] } : {}),
           });
         }
       },
@@ -506,11 +511,16 @@ export const usePlanner = create<State>()(
           delete catProject[name];
           set({
             timeCats: get().timeCats.filter((item) => item !== name),
+            scoreOff: (get().scoreOff ?? []).filter((item) => item !== name),
             routine: (get().routine ?? []).filter((block) => block.category !== name),
             tasks: get().tasks.map((task) => (task.category === name ? { ...task, category: "" } : task)),
             catProject,
           });
         }
+      },
+      setCategoryScore: (name, scored) => {
+        const current = get().scoreOff ?? [];
+        set({ scoreOff: scored ? current.filter((item) => item !== name) : [...new Set([...current, name])] });
       },
       addLabel: (name) => {
         const clean = name.trim();
@@ -694,6 +704,7 @@ export const usePlanner = create<State>()(
             routine: saved.routine ?? [],
             routineDone: saved.routineDone ?? {},
             catProject: saved.catProject ?? {},
+            scoreOff: saved.scoreOff ?? quietCategories(cats),
             tasks: saved.tasks ? tasks : current.tasks,
             habits: saved.habits ?? [],
             burst: 0,
@@ -762,6 +773,15 @@ function shiftDay(key: string, delta: number) {
 
 function clockOk(value: string) {
   return /^([01]?\d|2[0-3]):[0-5]\d$/.test(value.trim());
+}
+
+function quietCategory(name: string) {
+  const value = name.toLowerCase();
+  return ["дорога", "уборк", "туалет", "душ"].some((part) => value.includes(part));
+}
+
+function quietCategories(names: string[]) {
+  return names.filter(quietCategory);
 }
 
 export function weekdayOf(day: string) {

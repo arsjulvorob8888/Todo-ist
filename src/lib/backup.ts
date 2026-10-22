@@ -18,6 +18,7 @@ const KEYS = [
   "boards",
   "labels",
   "timeCats",
+  "scoreOff",
   "catProject",
   "routine",
   "routineDone",

@@ -12,6 +12,7 @@ type Profile = {
   xp: number;
   scores: Record<string, number>;
   timeCats: string[];
+  scoreOff?: string[];
   projects: string[];
   routine?: { id: string; category: string; start: string; end: string }[];
   routineDone?: Record<string, string[]>;
@@ -73,6 +74,7 @@ function snapshot(state: ReturnType<typeof usePlanner.getState>) {
       xp: state.xp,
       scores: state.scores,
       timeCats: state.timeCats,
+      scoreOff: state.scoreOff ?? [],
       projects: state.projects,
       routine: state.routine ?? [],
       routineDone: state.routineDone ?? {},
@@ -147,6 +149,7 @@ function applyRecords(records: SyncChange[]) {
           xp: number;
           scores: Record<string, number>;
           timeCats: string[];
+          scoreOff?: string[];
           projects: string[];
           routine?: { id: string; category: string; start: string; end: string }[];
           routineDone?: Record<string, string[]>;
@@ -156,6 +159,7 @@ function applyRecords(records: SyncChange[]) {
         next.xp = payload.xp;
         next.scores = payload.scores;
         next.timeCats = payload.timeCats;
+        if (payload.scoreOff) next.scoreOff = payload.scoreOff;
         next.projects = payload.projects;
         if (payload.routine) next.routine = payload.routine;
         if (payload.routineDone) next.routineDone = payload.routineDone;
@@ -231,6 +235,7 @@ function replaceAll(records: SyncChange[]) {
           xp: profile.xp,
           scores: profile.scores ?? {},
           timeCats: profile.timeCats ?? usePlanner.getState().timeCats,
+          scoreOff: profile.scoreOff ?? usePlanner.getState().scoreOff,
           projects: profile.projects ?? usePlanner.getState().projects,
           routine: profile.routine ?? usePlanner.getState().routine,
           routineDone: profile.routineDone ?? usePlanner.getState().routineDone,

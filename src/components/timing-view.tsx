@@ -32,6 +32,7 @@ function sortSpans(list: Span[], mode: SpanSort) {
 }
 
 export function TimingView() {
+  const scoreOff = usePlanner((s) => s.scoreOff ?? []);
   const timeCats = usePlanner((s) => s.timeCats);
   const spans = usePlanner((s) => s.spans);
   const startSpan = usePlanner((s) => s.startSpan);
@@ -200,7 +201,7 @@ export function TimingView() {
                     Удалить
                   </button>
                 </div>
-                {span.end ? (
+                {span.end && !scoreOff.includes(span.category) ? (
                   <div className="mt-3">
                     <ScorePips value={span.score} onPick={(value) => updateSpan(span.id, { score: value })} />
                   </div>
