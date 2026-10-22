@@ -60,6 +60,11 @@ export function playBell() {
   tone(1174, 0.55, "triangle", 0.035, 0.02);
 }
 
+export function playHabit() {
+  [523, 659, 784].forEach((freq, index) => tone(freq, 0.14, "triangle", 0.05, index * 0.06));
+  tone(1046, 0.18, "sine", 0.04, 0.2);
+}
+
 export function playLevel() {
   [523, 659, 784, 1046, 1318].forEach((f, i) => tone(f, 0.22, "sine", 0.06, i * 0.09));
 }

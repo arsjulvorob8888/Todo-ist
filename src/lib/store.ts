@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { useEffect, useState } from "react";
-import { dayKey, endOfDayMs } from "@/lib/dates";
+import { addDays, dayKey, endOfDayMs } from "@/lib/dates";
 
 export type Board = { id: string; name: string; color: string; inbox: boolean };
 export type Mark = { id: string; name: string; color: string };
@@ -35,6 +35,15 @@ export type Span = {
   score?: number;
   order?: number;
   placed?: boolean;
+};
+
+export type Habit = {
+  id: string;
+  title: string;
+  days: number[];
+  done: string[];
+  best: number;
+  created: string;
 };
 
 export type RoutineBlock = {
@@ -196,6 +205,7 @@ type State = {
   contacts: Contact[];
   ideas: Idea[];
   books: Book[];
+  habits: Habit[];
   scores: Record<string, number>;
   pomo: Pomo;
   reward: Reward | null;
@@ -235,6 +245,12 @@ type State = {
   addContact: (contact: Omit<Contact, "id">) => void;
   addIdea: (idea: Omit<Idea, "id">) => void;
   addBook: (book: Omit<Book, "id" | "date">) => void;
+  ensureHabits: () => void;
+  addHabit: (title: string, days?: number[]) => void;
+  updateHabit: (id: string, patch: Partial<Pick<Habit, "title" | "days">>) => void;
+  deleteHabit: (id: string) => void;
+  toggleHabit: (id: string) => { undone: boolean; allDone: boolean } | null;
+  focusHabit: (id: string) => void;
   startPomo: (minutes: number, taskId?: string, mode?: "focus" | "break") => void;
   focusTask: (id: string, minutes?: number) => void;
   pausePomo: () => void;
@@ -272,6 +288,7 @@ export const usePlanner = create<State>()(
       contacts: [],
       ideas: [],
       books: [],
+      habits: [],
       scores: {},
       pomo: emptyPomo(),
       reward: null,
@@ -284,6 +301,7 @@ export const usePlanner = create<State>()(
           get().boards.find((item) => item.id === task.projectId) ||
           get().boards.find((item) => item.name === task.project) ||
           get().boards.find((item) => item.inbox);
+        if ((board?.name ?? task.project) === "Привычки") get().ensureHabits();
         const orders = get().tasks.map((item) => item.order).filter((value): value is number => value != null);
         set({
           tasks: [
@@ -297,6 +315,7 @@ export const usePlanner = create<State>()(
               ...task,
               projectId: board?.id ?? "inbox",
               project: board?.name ?? task.project,
+              category: task.category || ((board?.name ?? task.project) === "Привычки" ? "Привычки" : ""),
               ...(orders.length ? { order: Math.min(...orders) - 1 } : {}),
             },
             ...get().tasks,
@@ -508,6 +527,64 @@ export const usePlanner = create<State>()(
       addContact: (contact) => set({ contacts: [...get().contacts, { ...contact, id: uid() }] }),
       addIdea: (idea) => set({ ideas: [{ ...idea, id: uid() }, ...get().ideas] }),
       addBook: (book) => set({ books: [{ ...book, id: uid(), date: dayKey() }, ...get().books] }),
+      ensureHabits: () => {
+        const name = "Привычки";
+        const patch: Partial<State> = {};
+        if (!get().projects.includes(name)) patch.projects = [...get().projects, name];
+        if (!get().boards.some((board) => board.name === name)) {
+          patch.boards = [...get().boards, { id: "project-habits", name, color: "#c58af9", inbox: false }];
+        }
+        if (!get().timeCats.includes(name)) {
+          patch.timeCats = [...get().timeCats, name].sort((a, b) => a.localeCompare(b, "ru"));
+        }
+        if ((get().catProject ?? {})[name] !== name) patch.catProject = { ...(get().catProject ?? {}), [name]: name };
+        if (Object.keys(patch).length) set(patch);
+      },
+      addHabit: (title, days = [1, 2, 3, 4, 5, 6, 7]) => {
+        const clean = title.trim();
+        if (!clean) return;
+        get().ensureHabits();
+        set({
+          habits: [{ id: uid(), title: clean, days, done: [], best: 0, created: new Date().toISOString() }, ...get().habits],
+        });
+      },
+      updateHabit: (id, patch) =>
+        set({
+          habits: get().habits.map((habit) =>
+            habit.id === id ? { ...habit, ...patch, title: patch.title?.trim() || habit.title } : habit,
+          ),
+        }),
+      deleteHabit: (id) => set({ habits: get().habits.filter((habit) => habit.id !== id) }),
+      toggleHabit: (id) => {
+        get().ensureHabits();
+        const habit = get().habits.find((item) => item.id === id);
+        if (!habit) return null;
+        const today = dayKey();
+        const undone = habit.done.includes(today);
+        const done = undone ? habit.done.filter((day) => day !== today) : [...habit.done, today];
+        const best = Math.max(habit.best || 0, habitStreak(done, today));
+        const habits = get().habits.map((item) => (item.id === id ? { ...item, done, best } : item));
+        if (undone) {
+          set({ habits });
+          return { undone: true, allDone: false };
+        }
+        const allDone =
+          habits.some((item) => habitDue(item, today)) &&
+          habits.every((item) => !habitDue(item, today) || item.done.includes(today));
+        const open = get().spans.find((span) => span.day === today && !span.end);
+        if (open?.category !== "Привычки") get().startSpan("Привычки");
+        const gained = award(get().xp, 8, best > 1 ? `Серия ${best}` : "Привычка закрыта");
+        set({ habits, ...gained, burst: get().burst + (allDone ? 2 : 1) });
+        return { undone: false, allDone };
+      },
+      focusHabit: (id) => {
+        if (!get().habits.some((item) => item.id === id)) return;
+        get().ensureHabits();
+        const today = dayKey();
+        const open = get().spans.find((span) => span.day === today && !span.end);
+        if (open?.category !== "Привычки") get().startSpan("Привычки");
+        get().startPomo(25, id);
+      },
       startPomo: (minutes, taskId = "", mode = "focus") =>
         set({
           pomo: {
@@ -616,6 +693,7 @@ export const usePlanner = create<State>()(
             routineDone: saved.routineDone ?? {},
             catProject: saved.catProject ?? {},
             tasks: saved.tasks ? tasks : current.tasks,
+            habits: saved.habits ?? [],
             burst: 0,
             reward: null,
             undo: null,
@@ -682,6 +760,27 @@ function shiftDay(key: string, delta: number) {
 
 function clockOk(value: string) {
   return /^([01]?\d|2[0-3]):[0-5]\d$/.test(value.trim());
+}
+
+export function weekdayOf(day: string) {
+  const value = new Date(`${day}T12:00:00`).getDay();
+  return value === 0 ? 7 : value;
+}
+
+export function habitDue(habit: Pick<Habit, "days">, day = dayKey()) {
+  return !habit.days?.length || habit.days.includes(weekdayOf(day));
+}
+
+export function habitStreak(done: string[], today = dayKey()) {
+  const set = new Set(done);
+  let cursor = set.has(today) ? today : addDays(today, -1);
+  if (!set.has(cursor)) return 0;
+  let count = 0;
+  while (set.has(cursor)) {
+    count += 1;
+    cursor = addDays(cursor, -1);
+  }
+  return count;
 }
 
 function award(xp: number, amount: number, text: string): Pick<State, "xp" | "reward"> {

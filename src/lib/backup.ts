@@ -27,6 +27,7 @@ const KEYS = [
   "contacts",
   "ideas",
   "books",
+  "habits",
   "scores",
 ] as const;
 
@@ -65,6 +66,7 @@ export function richness(data: Record<string, unknown>) {
     list("contacts") +
     list("ideas") +
     list("books") +
+    list("habits") +
     list("routine") +
     customMission +
     (Number(data.xp) > 0 ? 1 : 0)

@@ -4,11 +4,14 @@ import { useEffect, useState } from "react";
 import { ScorePips } from "@/components/score-pips";
 import { dayKey, fmtHm, fmtSpan, formatDay } from "@/lib/dates";
 import { quoteForNow } from "@/lib/quotes";
-import { playStart, playTap } from "@/lib/sound";
-import { dayScore, levelInfo, spanSeconds, streakCount, usePlanner, type Pomo, type Task } from "@/lib/store";
+import { playHabit, playStart, playTap, playWin } from "@/lib/sound";
+import { dayScore, habitDue, habitStreak, levelInfo, spanSeconds, streakCount, usePlanner, type Pomo, type Task } from "@/lib/store";
 
 export function Today() {
+  const habits = usePlanner((s) => s.habits);
   const tasks = usePlanner((s) => s.tasks);
+  const ensureHabits = usePlanner((s) => s.ensureHabits);
+  const toggleHabit = usePlanner((s) => s.toggleHabit);
   const spans = usePlanner((s) => s.spans);
   const xp = usePlanner((s) => s.xp);
   const timeCats = usePlanner((s) => s.timeCats);
@@ -28,6 +31,10 @@ export function Today() {
     const id = window.setInterval(() => setTick((n) => n + 1), 1000);
     return () => window.clearInterval(id);
   }, []);
+
+  useEffect(() => {
+    ensureHabits();
+  }, [ensureHabits]);
 
   const open = spans.find((span) => span.day === today && !span.end);
   const finished = spans.filter((span) => span.day === today && span.end).sort((a, b) => new Date(b.start).getTime() - new Date(a.start).getTime());
@@ -182,6 +189,47 @@ export function Today() {
         onPause={pausePomo}
         onStop={stopPomo}
       />
+
+      <section>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="font-display text-2xl">Привычки</h2>
+          <Link to="/habits" className="text-sm text-gold">
+            Все
+          </Link>
+        </div>
+        {habits.filter((habit) => habitDue(habit, today)).length === 0 ? (
+          <p className="rounded-card border border-dashed border-line p-4 text-sm text-mist">Добавь привычку — отметка сама включит категорию «Привычки» в тайминге.</p>
+        ) : (
+          <ul className="flex gap-2 overflow-x-auto">
+            {habits
+              .filter((habit) => habitDue(habit, today))
+              .map((habit) => {
+                const done = habit.done.includes(today);
+                return (
+                  <li key={habit.id}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const result = toggleHabit(habit.id);
+                        if (!result) return;
+                        if (result.undone) playTap();
+                        else if (result.allDone) playWin();
+                        else playHabit();
+                      }}
+                      className={`flex w-28 flex-col items-start rounded-card border px-3 py-3 text-left ${done ? "border-gold bg-gold/10" : "border-line bg-panel"}`}
+                    >
+                      <span className={`mb-2 flex size-7 items-center justify-center rounded-full border-2 text-sm ${done ? "border-gold bg-gold text-ink" : "border-gold"}`}>
+                        {done ? "✓" : ""}
+                      </span>
+                      <span className="line-clamp-2 text-sm">{habit.title}</span>
+                      <span className="mt-1 text-xs text-mist">{habitStreak(habit.done, today)} дн.</span>
+                    </button>
+                  </li>
+                );
+              })}
+          </ul>
+        )}
+      </section>
 
       <section>
         <div className="mb-3 flex items-center justify-between">

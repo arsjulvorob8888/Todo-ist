@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AccountRouteImport } from './routes/account'
 import { Route as BooksRouteImport } from './routes/books'
 import { Route as GoalsRouteImport } from './routes/goals'
+import { Route as HabitsRouteImport } from './routes/habits'
 import { Route as IdeasRouteImport } from './routes/ideas'
 import { Route as MoreRouteImport } from './routes/more'
 import { Route as PeopleRouteImport } from './routes/people'
@@ -42,6 +43,11 @@ const BooksRoute = BooksRouteImport.update({
 const GoalsRoute = GoalsRouteImport.update({
   id: '/goals',
   path: '/goals',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HabitsRoute = HabitsRouteImport.update({
+  id: '/habits',
+  path: '/habits',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IdeasRoute = IdeasRouteImport.update({
@@ -100,6 +106,7 @@ export interface FileRoutesByFullPath {
   '/account': typeof AccountRoute
   '/books': typeof BooksRoute
   '/goals': typeof GoalsRoute
+  '/habits': typeof HabitsRoute
   '/ideas': typeof IdeasRoute
   '/more': typeof MoreRoute
   '/people': typeof PeopleRoute
@@ -116,6 +123,7 @@ export interface FileRoutesByTo {
   '/account': typeof AccountRoute
   '/books': typeof BooksRoute
   '/goals': typeof GoalsRoute
+  '/habits': typeof HabitsRoute
   '/ideas': typeof IdeasRoute
   '/more': typeof MoreRoute
   '/people': typeof PeopleRoute
@@ -133,6 +141,7 @@ export interface FileRoutesById {
   '/account': typeof AccountRoute
   '/books': typeof BooksRoute
   '/goals': typeof GoalsRoute
+  '/habits': typeof HabitsRoute
   '/ideas': typeof IdeasRoute
   '/more': typeof MoreRoute
   '/people': typeof PeopleRoute
@@ -151,6 +160,7 @@ export interface FileRouteTypes {
     | '/account'
     | '/books'
     | '/goals'
+    | '/habits'
     | '/ideas'
     | '/more'
     | '/people'
@@ -167,6 +177,7 @@ export interface FileRouteTypes {
     | '/account'
     | '/books'
     | '/goals'
+    | '/habits'
     | '/ideas'
     | '/more'
     | '/people'
@@ -183,6 +194,7 @@ export interface FileRouteTypes {
     | '/account'
     | '/books'
     | '/goals'
+    | '/habits'
     | '/ideas'
     | '/more'
     | '/people'
@@ -200,6 +212,7 @@ export interface RootRouteChildren {
   AccountRoute: typeof AccountRoute
   BooksRoute: typeof BooksRoute
   GoalsRoute: typeof GoalsRoute
+  HabitsRoute: typeof HabitsRoute
   IdeasRoute: typeof IdeasRoute
   MoreRoute: typeof MoreRoute
   PeopleRoute: typeof PeopleRoute
@@ -240,6 +253,13 @@ declare module '@tanstack/react-router' {
       path: '/goals'
       fullPath: '/goals'
       preLoaderRoute: typeof GoalsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/habits': {
+      id: '/habits'
+      path: '/habits'
+      fullPath: '/habits'
+      preLoaderRoute: typeof HabitsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/ideas': {
@@ -320,6 +340,7 @@ const rootRouteChildren: RootRouteChildren = {
   AccountRoute: AccountRoute,
   BooksRoute: BooksRoute,
   GoalsRoute: GoalsRoute,
+  HabitsRoute: HabitsRoute,
   IdeasRoute: IdeasRoute,
   MoreRoute: MoreRoute,
   PeopleRoute: PeopleRoute,
