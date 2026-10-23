@@ -266,17 +266,13 @@ function People({
   onDeleteNote: (id: string) => void;
 }) {
   const today = dayKey();
-  const [open, setOpen] = useState(false);
-  const [name, setName] = useState("");
-  const [group, setGroup] = useState("");
-  const [birthday, setBirthday] = useState("");
   const [eventName, setEventName] = useState("");
   const [kind, setKind] = useState<"birthday" | "holiday">("birthday");
   const [eventDate, setEventDate] = useState("");
   const [note, setNote] = useState("");
   const [notePerson, setNotePerson] = useState("");
   const [sort, setSort] = useState<"soon" | "asc" | "desc">("soon");
-  const [tab, setTab] = useState<"people" | "dates" | "notes">("people");
+  const [tab, setTab] = useState<"dates" | "notes">("dates");
   const celebrations = contacts
     .map((person) => ({ person, next: nextCelebration(person.birthday, today) }))
     .filter((item): item is { person: (typeof contacts)[number]; next: NonNullable<ReturnType<typeof nextCelebration>> } => item.next != null)
@@ -288,7 +284,6 @@ function People({
     return sort === "asc" ? left - right : right - left;
   });
   const soon = celebrations.filter((item) => item.next.days <= 14);
-  const dated = new Set(celebrations.map((item) => item.person.id));
 
   return (
     <div className="space-y-6">
@@ -302,7 +297,7 @@ function People({
           <button
             key={id}
             type="button"
-            onClick={() => setTab(tab === id ? "people" : id)}
+            onClick={() => setTab(id)}
             className={`rounded-full px-4 py-2 text-sm ${tab === id ? "bg-gold text-ink" : "border border-line text-mist"}`}
           >
             {label}
@@ -439,57 +434,6 @@ function People({
           })}
         </ul>
       </section>
-      ) : null}
-
-      {tab === "people" ? (
-      <>
-      <section>
-        <button type="button" className="mb-3 rounded-full bg-gold px-4 py-2 text-ink" onClick={() => setOpen(true)}>
-          Человек
-        </button>
-        <ul className="space-y-2">
-          {contacts
-            .filter((person) => !dated.has(person.id))
-            .map((person) => (
-              <li key={person.id} className="flex items-center justify-between gap-3 rounded-2xl border border-line bg-panel px-3 py-3">
-                <span>
-                  {person.name} · {person.group || "без группы"}
-                </span>
-                <button type="button" className="text-sm text-ember" onClick={() => onDelete(person.id)}>
-                  Удалить
-                </button>
-              </li>
-            ))}
-        </ul>
-      </section>
-      {open ? (
-        <Modal title="Контакт" onClose={() => setOpen(false)}>
-          <Field label="Имя">
-            <input className={inputClass} value={name} onChange={(e) => setName(e.target.value)} />
-          </Field>
-          <Field label="Группа">
-            <input className={inputClass} value={group} onChange={(e) => setGroup(e.target.value)} />
-          </Field>
-          <Field label="День рождения">
-            <input className={inputClass} type="date" value={birthday} onChange={(e) => setBirthday(e.target.value)} />
-          </Field>
-          <button
-            type="button"
-            className="w-full rounded-full bg-gold py-3 text-ink"
-            onClick={() => {
-              if (!name.trim()) return;
-              onAdd({ name: name.trim(), group, birthday, kind: birthday ? "birthday" : undefined });
-              setName("");
-              setGroup("");
-              setBirthday("");
-              setOpen(false);
-            }}
-          >
-            Сохранить
-          </button>
-        </Modal>
-      ) : null}
-      </>
       ) : null}
     </div>
   );
