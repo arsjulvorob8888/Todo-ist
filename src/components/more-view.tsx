@@ -295,7 +295,6 @@ function People({
       <nav className="flex flex-wrap gap-2">
         {(
           [
-            ["people", "Люди"],
             ["dates", "Дни рождения и праздники"],
             ["notes", "Заметки"],
           ] as const
@@ -303,7 +302,7 @@ function People({
           <button
             key={id}
             type="button"
-            onClick={() => setTab(id)}
+            onClick={() => setTab(tab === id ? "people" : id)}
             className={`rounded-full px-4 py-2 text-sm ${tab === id ? "bg-gold text-ink" : "border border-line text-mist"}`}
           >
             {label}
