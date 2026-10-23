@@ -194,6 +194,11 @@ function HabitRow({
   const left = Math.max(0, goal - streak);
   const [draft, setDraft] = useState(habit.title);
   const [days, setDays] = useState(habit.days);
+  useEffect(() => {
+    if (!editing) return;
+    setDraft(habit.title);
+    setDays(habit.days?.length ? habit.days : [1, 2, 3, 4, 5, 6, 7]);
+  }, [editing, habit.title, habit.days]);
   const monday = addDays(today, 1 - weekdayOf(today));
   const dots = Array.from({ length: 7 }, (_, index) => addDays(monday, index));
 
@@ -215,6 +220,9 @@ function HabitRow({
             {streak} {streak === 1 ? "день" : "дней"}
             {habit.best > streak ? ` · рекорд ${habit.best}` : ""}
           </p>
+        </button>
+        <button type="button" className="text-sm text-gold" onClick={onEdit}>
+          Править
         </button>
         <button type="button" className="rounded-full bg-gold px-3 py-1 text-sm text-ink" onClick={() => { playStart(); onFocus(); }}>
           25 мин

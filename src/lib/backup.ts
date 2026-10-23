@@ -26,6 +26,7 @@ const KEYS = [
   "spans",
   "goals",
   "contacts",
+  "personNotes",
   "ideas",
   "books",
   "habits",
@@ -65,6 +66,7 @@ export function richness(data: Record<string, unknown>) {
     list("spans") +
     list("goals") * 3 +
     list("contacts") +
+    list("personNotes") +
     list("ideas") +
     list("books") +
     list("habits") +

@@ -64,6 +64,7 @@ export type Goal = {
   kpis?: Kpi[];
 };
 export type Contact = { id: string; name: string; group: string; birthday: string; kind?: "birthday" | "holiday" };
+export type PersonNote = { id: string; contactId: string; text: string; created: string };
 export type Idea = { id: string; title: string; note: string };
 export type Book = { id: string; title: string; author: string; date: string };
 
@@ -204,6 +205,7 @@ type State = {
   spans: Span[];
   goals: Goal[];
   contacts: Contact[];
+  personNotes: PersonNote[];
   ideas: Idea[];
   books: Book[];
   habits: Habit[];
@@ -247,6 +249,8 @@ type State = {
   addContact: (contact: Omit<Contact, "id">) => void;
   updateContact: (id: string, patch: Partial<Omit<Contact, "id">>) => void;
   deleteContact: (id: string) => void;
+  addPersonNote: (text: string, contactId?: string) => void;
+  deletePersonNote: (id: string) => void;
   addIdea: (idea: Omit<Idea, "id">) => void;
   addBook: (book: Omit<Book, "id" | "date">) => void;
   ensureHabits: () => void;
@@ -291,6 +295,7 @@ export const usePlanner = create<State>()(
       spans: [],
       goals: [{ id: "mission-goal", title: "Финансовая свобода", content: "Чистая прибыль 300 000 ₽ в месяц. Капитал 10 млн. Пассив 100 000 ₽." }],
       contacts: [],
+      personNotes: [],
       ideas: [],
       books: [],
       habits: [],
@@ -539,6 +544,14 @@ export const usePlanner = create<State>()(
       addContact: (contact) => set({ contacts: [...get().contacts, { ...contact, id: uid() }] }),
       updateContact: (id, patch) => set({ contacts: get().contacts.map((item) => (item.id === id ? { ...item, ...patch } : item)) }),
       deleteContact: (id) => set({ contacts: get().contacts.filter((item) => item.id !== id) }),
+      addPersonNote: (text, contactId = "") => {
+        const clean = text.trim();
+        if (!clean) return;
+        set({
+          personNotes: [{ id: uid(), contactId, text: clean, created: new Date().toISOString() }, ...(get().personNotes ?? [])],
+        });
+      },
+      deletePersonNote: (id) => set({ personNotes: (get().personNotes ?? []).filter((note) => note.id !== id) }),
       addIdea: (idea) => set({ ideas: [{ ...idea, id: uid() }, ...get().ideas] }),
       addBook: (book) => set({ books: [{ ...book, id: uid(), date: dayKey() }, ...get().books] }),
       ensureHabits: () => {
@@ -711,6 +724,7 @@ export const usePlanner = create<State>()(
             scoreOff: saved.scoreOff ?? quietCategories(cats),
             tasks: saved.tasks ? tasks : current.tasks,
             habits: saved.habits ?? [],
+            personNotes: saved.personNotes ?? [],
             burst: 0,
             reward: null,
             undo: null,

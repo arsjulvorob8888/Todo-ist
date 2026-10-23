@@ -2,7 +2,7 @@ import { useSyncExternalStore } from "react";
 import { pushPull, type SyncChange } from "@/lib/sync.functions";
 import { usePlanner, withGuessedCategory, type Task } from "@/lib/store";
 
-const LISTS = ["tasks", "spans", "goals", "contacts", "ideas", "books", "boards", "labels", "habits"] as const;
+const LISTS = ["tasks", "spans", "goals", "contacts", "ideas", "books", "boards", "labels", "habits", "personNotes"] as const;
 const SENT_KEY = "poryadok-sync-sent";
 const CURSOR_KEY = "poryadok-sync-cursor";
 const USER_KEY = "poryadok-sync-user";
@@ -93,7 +93,8 @@ function hasLocalData(state: ReturnType<typeof usePlanner.getState>) {
       state.ideas.length +
       state.books.length +
       (state.routine?.length ?? 0) +
-      (state.habits?.length ?? 0) >
+      (state.habits?.length ?? 0) +
+      (state.personNotes?.length ?? 0) >
       0 || state.xp > 0
   );
 }

@@ -3,7 +3,7 @@ import { z } from "zod";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { getSql } from "@/lib/db";
 
-const COLLECTIONS = new Set(["tasks", "spans", "goals", "contacts", "ideas", "books", "boards", "labels", "meta"]);
+const COLLECTIONS = new Set(["tasks", "spans", "goals", "contacts", "ideas", "books", "boards", "labels", "habits", "personNotes", "meta"]);
 
 const changeSchema = z.object({
   collection: z.string().max(40),

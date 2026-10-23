@@ -124,10 +124,13 @@ export function LibraryView({ section }: { section: keyof typeof TITLES }) {
   const renameCategory = usePlanner((s) => s.renameCategory);
   const deleteCategory = usePlanner((s) => s.deleteCategory);
   const contacts = usePlanner((s) => s.contacts);
+  const personNotes = usePlanner((s) => s.personNotes ?? []);
   const ideas = usePlanner((s) => s.ideas);
   const books = usePlanner((s) => s.books);
   const addContact = usePlanner((s) => s.addContact);
   const deleteContact = usePlanner((s) => s.deleteContact);
+  const addPersonNote = usePlanner((s) => s.addPersonNote);
+  const deletePersonNote = usePlanner((s) => s.deletePersonNote);
   const addIdea = usePlanner((s) => s.addIdea);
   const addBook = usePlanner((s) => s.addBook);
 
@@ -153,7 +156,14 @@ export function LibraryView({ section }: { section: keyof typeof TITLES }) {
         />
       ) : null}
       {section === "people" ? (
-        <People contacts={contacts} onAdd={addContact} onDelete={deleteContact} />
+        <People
+          contacts={contacts}
+          notes={personNotes}
+          onAdd={addContact}
+          onDelete={deleteContact}
+          onAddNote={addPersonNote}
+          onDeleteNote={deletePersonNote}
+        />
       ) : null}
       {section === "ideas" ? <Ideas ideas={ideas} onAdd={addIdea} /> : null}
       {section === "books" ? <Books books={books} onAdd={addBook} /> : null}
@@ -242,12 +252,18 @@ function Cats({
 
 function People({
   contacts,
+  notes,
   onAdd,
   onDelete,
+  onAddNote,
+  onDeleteNote,
 }: {
   contacts: { id: string; name: string; group: string; birthday: string; kind?: "birthday" | "holiday" }[];
+  notes: { id: string; contactId: string; text: string; created: string }[];
   onAdd: (contact: { name: string; group: string; birthday: string; kind?: "birthday" | "holiday" }) => void;
   onDelete: (id: string) => void;
+  onAddNote: (text: string, contactId?: string) => void;
+  onDeleteNote: (id: string) => void;
 }) {
   const today = dayKey();
   const [open, setOpen] = useState(false);
@@ -257,6 +273,8 @@ function People({
   const [eventName, setEventName] = useState("");
   const [kind, setKind] = useState<"birthday" | "holiday">("birthday");
   const [eventDate, setEventDate] = useState("");
+  const [note, setNote] = useState("");
+  const [notePerson, setNotePerson] = useState("");
   const [sort, setSort] = useState<"soon" | "asc" | "desc">("soon");
   const celebrations = contacts
     .map((person) => ({ person, next: nextCelebration(person.birthday, today) }))
@@ -354,6 +372,48 @@ function People({
               </button>
             </li>
           ))}
+        </ul>
+      </section>
+
+      <section className="rounded-card border border-line bg-panel p-4">
+        <h2 className="font-display text-2xl">Заметки</h2>
+        <form
+          className="mt-3 space-y-3"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (!note.trim()) return;
+            onAddNote(note, notePerson);
+            setNote("");
+          }}
+        >
+          <select className={inputClass} value={notePerson} onChange={(event) => setNotePerson(event.target.value)}>
+            <option value="">Без привязки к человеку</option>
+            {[...contacts].sort((a, b) => a.name.localeCompare(b.name, "ru")).map((person) => (
+              <option key={person.id} value={person.id}>
+                {person.name}
+              </option>
+            ))}
+          </select>
+          <textarea className={inputClass} rows={3} placeholder="Заметка" value={note} onChange={(event) => setNote(event.target.value)} />
+          <button type="submit" className="rounded-full bg-gold px-4 py-2 text-ink">
+            Добавить
+          </button>
+        </form>
+        <ul className="mt-4 space-y-2">
+          {notes.map((item) => {
+            const person = contacts.find((contact) => contact.id === item.contactId);
+            return (
+              <li key={item.id} className="rounded-2xl border border-line px-3 py-3">
+                <p className="text-xs text-mist">
+                  {person?.name ?? "Без привязки"} · {new Date(item.created).toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                </p>
+                <p className="mt-1 whitespace-pre-wrap">{item.text}</p>
+                <button type="button" className="mt-2 text-sm text-ember" onClick={() => onDeleteNote(item.id)}>
+                  Удалить
+                </button>
+              </li>
+            );
+          })}
         </ul>
       </section>
 
