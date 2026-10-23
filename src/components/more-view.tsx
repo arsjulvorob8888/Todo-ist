@@ -276,6 +276,7 @@ function People({
   const [note, setNote] = useState("");
   const [notePerson, setNotePerson] = useState("");
   const [sort, setSort] = useState<"soon" | "asc" | "desc">("soon");
+  const [tab, setTab] = useState<"people" | "dates" | "notes">("people");
   const celebrations = contacts
     .map((person) => ({ person, next: nextCelebration(person.birthday, today) }))
     .filter((item): item is { person: (typeof contacts)[number]; next: NonNullable<ReturnType<typeof nextCelebration>> } => item.next != null)
@@ -291,6 +292,26 @@ function People({
 
   return (
     <div className="space-y-6">
+      <nav className="flex flex-wrap gap-2">
+        {(
+          [
+            ["people", "Люди"],
+            ["dates", "Дни рождения и праздники"],
+            ["notes", "Заметки"],
+          ] as const
+        ).map(([id, label]) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => setTab(id)}
+            className={`rounded-full px-4 py-2 text-sm ${tab === id ? "bg-gold text-ink" : "border border-line text-mist"}`}
+          >
+            {label}
+          </button>
+        ))}
+      </nav>
+      {tab === "dates" ? (
+      <>
       <section className="rounded-card border border-line bg-panel p-4">
         <h2 className="font-display text-2xl">Ближайшие 2 недели</h2>
         {soon.length === 0 ? <p className="mt-2 text-sm text-mist">В ближайшие 14 дней дней рождения и праздников нет.</p> : null}
@@ -374,7 +395,10 @@ function People({
           ))}
         </ul>
       </section>
+      </>
+      ) : null}
 
+      {tab === "notes" ? (
       <section className="rounded-card border border-line bg-panel p-4">
         <h2 className="font-display text-2xl">Заметки</h2>
         <form
@@ -416,7 +440,10 @@ function People({
           })}
         </ul>
       </section>
+      ) : null}
 
+      {tab === "people" ? (
+      <>
       <section>
         <button type="button" className="mb-3 rounded-full bg-gold px-4 py-2 text-ink" onClick={() => setOpen(true)}>
           Человек
@@ -462,6 +489,8 @@ function People({
             Сохранить
           </button>
         </Modal>
+      ) : null}
+      </>
       ) : null}
     </div>
   );
