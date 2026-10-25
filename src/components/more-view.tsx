@@ -907,10 +907,11 @@ function Books({
                       className="rounded-full border border-line px-3 py-1 text-xs text-cream"
                       onClick={() => {
                         const created = onTask(book.id, action, taskNote[book.id] ?? "");
+                        if (action === "Прочитать") onUpdate(book.id, { status: "queue" });
                         setTaskToast(
                           created
-                            ? `«${action}: ${book.title}» назначена и попала в раздел «Задачи», категория «Чтение».`
-                            : `«${action}: ${book.title}» уже есть в разделе «Задачи», категория «Чтение».`,
+                            ? `«${action}: ${book.title}» назначена и попала в раздел «Задачи», категория «Чтение».${action === "Прочитать" ? " Произведение перенесено в «На прочтение»." : ""}`
+                            : `«${action}: ${book.title}» уже есть в разделе «Задачи», категория «Чтение».${action === "Прочитать" ? " Произведение перенесено в «На прочтение»." : ""}`,
                         );
                       }}
                     >
