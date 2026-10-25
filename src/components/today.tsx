@@ -204,7 +204,7 @@ export function Today() {
         {habits.filter((habit) => habitDue(habit, today)).length === 0 ? (
           <p className="rounded-card border border-dashed border-line p-4 text-sm text-mist">Добавь привычку — отметка сама включит категорию «Привычки» в тайминге.</p>
         ) : (
-          <ul className="flex gap-2 overflow-x-auto">
+          <ul className="space-y-2">
             {habits
               .filter((habit) => habitDue(habit, today))
               .map((habit) => {
@@ -220,13 +220,13 @@ export function Today() {
                         else if (result.allDone) playWin();
                         else playHabit();
                       }}
-                      className={`flex w-28 flex-col items-start rounded-card border px-3 py-3 text-left ${done ? "border-gold bg-gold/10" : "border-line bg-panel"}`}
+                      className={`flex w-full items-start gap-3 rounded-card border px-3 py-3 text-left ${done ? "border-gold bg-gold/10" : "border-line bg-panel"}`}
                     >
-                      <span className={`mb-2 flex size-7 items-center justify-center rounded-full border-2 text-sm ${done ? "border-gold bg-gold text-ink" : "border-gold"}`}>
+                      <span className={`flex size-7 shrink-0 items-center justify-center rounded-full border-2 text-sm ${done ? "border-gold bg-gold text-ink" : "border-gold"}`}>
                         {done ? "✓" : ""}
                       </span>
-                      <span className="line-clamp-2 text-sm">{habit.title}</span>
-                      <span className="mt-1 text-xs text-mist">{habitStreak(habit.done, today)} дн.</span>
+                      <span className={`min-w-0 flex-1 text-sm ${done ? "text-mist line-through" : ""}`}>{habit.title}</span>
+                      <span className="shrink-0 text-xs text-mist">{habitStreak(habit.done, today)} дн.</span>
                     </button>
                   </li>
                 );
