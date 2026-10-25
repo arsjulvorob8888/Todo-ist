@@ -133,6 +133,9 @@ export function LibraryView({ section }: { section: keyof typeof TITLES }) {
   const deletePersonNote = usePlanner((s) => s.deletePersonNote);
   const addIdea = usePlanner((s) => s.addIdea);
   const addBook = usePlanner((s) => s.addBook);
+  const addBooks = usePlanner((s) => s.addBooks);
+  const updateBook = usePlanner((s) => s.updateBook);
+  const deleteBook = usePlanner((s) => s.deleteBook);
 
   return (
     <div>
@@ -166,7 +169,9 @@ export function LibraryView({ section }: { section: keyof typeof TITLES }) {
         />
       ) : null}
       {section === "ideas" ? <Ideas ideas={ideas} onAdd={addIdea} /> : null}
-      {section === "books" ? <Books books={books} onAdd={addBook} /> : null}
+      {section === "books" ? (
+        <Books books={books} onAdd={addBook} onImport={addBooks} onUpdate={updateBook} onDelete={deleteBook} />
+      ) : null}
     </div>
   );
 }
@@ -485,12 +490,22 @@ function Ideas({
 function Books({
   books,
   onAdd,
+  onImport,
+  onUpdate,
+  onDelete,
 }: {
   books: { id: string; title: string; author: string; date: string }[];
   onAdd: (book: { title: string; author: string }) => void;
+  onImport: (books: { title: string; author: string }[]) => number;
+  onUpdate: (id: string, patch: { title?: string; author?: string }) => void;
+  onDelete: (id: string) => void;
 }) {
   const [title, setTitle] = useState("");
   const [author, setAuthor] = useState("");
+  const [editing, setEditing] = useState<string | null>(null);
+  const [draftTitle, setDraftTitle] = useState("");
+  const [draftAuthor, setDraftAuthor] = useState("");
+  const [notice, setNotice] = useState("");
   return (
     <div>
       <div className="mb-3 flex flex-col gap-2 sm:flex-row">
@@ -509,13 +524,106 @@ function Books({
           Добавить
         </button>
       </div>
+      <label className="mb-4 flex cursor-pointer flex-col gap-2 rounded-card border border-dashed border-line bg-panel px-4 py-3 text-sm text-mist sm:flex-row sm:items-center sm:justify-between">
+        <span>Список литературы: файл .txt или .csv, строка «Название — Автор»</span>
+        <span className="rounded-full bg-gold px-4 py-2 text-center text-ink">Загрузить список</span>
+        <input
+          type="file"
+          accept=".txt,.csv,.tsv,text/plain,text/csv"
+          className="sr-only"
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            event.target.value = "";
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = () => {
+              const text = String(reader.result ?? "");
+              if (text.startsWith("PK") || text.includes("\u0000")) {
+                setNotice("Excel так не читается. Сохрани список как .txt или .csv: каждая строка — «Название — Автор»");
+                return;
+              }
+              const parsed = parseBookList(text);
+              const added = onImport(parsed);
+              setNotice(added ? `Добавлено книг: ${added}` : parsed.length ? "Эти книги уже есть в списке" : "В файле не нашлось строк с книгами");
+            };
+            reader.readAsText(file);
+          }}
+        />
+      </label>
+      {notice ? <p className="mb-3 text-sm text-gold">{notice}</p> : null}
       <ul className="space-y-2">
         {books.map((book) => (
           <li key={book.id} className="rounded-2xl border border-line bg-panel px-3 py-3">
-            {book.title} — {book.author} <span className="text-mist">{book.date}</span>
+            {editing === book.id ? (
+              <form
+                className="flex flex-col gap-2 sm:flex-row"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  if (!draftTitle.trim()) return;
+                  onUpdate(book.id, { title: draftTitle, author: draftAuthor });
+                  setEditing(null);
+                }}
+              >
+                <input className={inputClass} value={draftTitle} onChange={(event) => setDraftTitle(event.target.value)} />
+                <input className={inputClass} value={draftAuthor} onChange={(event) => setDraftAuthor(event.target.value)} />
+                <button type="submit" className="text-sm text-gold">
+                  Сохранить
+                </button>
+                <button type="button" className="text-sm text-ember" onClick={() => onDelete(book.id)}>
+                  Удалить
+                </button>
+              </form>
+            ) : (
+              <div className="flex items-center justify-between gap-3">
+                <span>
+                  {book.title}
+                  {book.author ? ` — ${book.author}` : ""} <span className="text-mist">{book.date}</span>
+                </span>
+                <button
+                  type="button"
+                  className="shrink-0 text-sm text-gold"
+                  onClick={() => {
+                    setEditing(book.id);
+                    setDraftTitle(book.title);
+                    setDraftAuthor(book.author);
+                  }}
+                >
+                  Править
+                </button>
+              </div>
+            )}
           </li>
         ))}
       </ul>
     </div>
   );
+}
+
+function parseBookList(raw: string) {
+  const lines = raw
+    .replace(/^\uFEFF/, "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  if (!lines.length) return [];
+  const head = lines[0].toLowerCase();
+  const header = /(книга|название|title)/.test(head) && /(автор|author)/.test(head);
+  return (header ? lines.slice(1) : lines).flatMap((line) => {
+    const pair = splitBookLine(line);
+    return pair.title ? [pair] : [];
+  });
+}
+
+function splitBookLine(line: string) {
+  const comma = line.split(/[;\t]/);
+  if (comma.length >= 2) return { title: cleanCell(comma[0]), author: cleanCell(comma.slice(1).join(" ")) };
+  const dash = line.split(/\s+[—–]\s+|\s+-\s+/);
+  if (dash.length >= 2) return { title: cleanCell(dash[0]), author: cleanCell(dash.slice(1).join(" — ")) };
+  const csv = line.split(",");
+  if (csv.length === 2) return { title: cleanCell(csv[0]), author: cleanCell(csv[1]) };
+  return { title: cleanCell(line), author: "" };
+}
+
+function cleanCell(value: string) {
+  return value.trim().replace(/^["']|["']$/g, "");
 }

@@ -253,6 +253,9 @@ type State = {
   deletePersonNote: (id: string) => void;
   addIdea: (idea: Omit<Idea, "id">) => void;
   addBook: (book: Omit<Book, "id" | "date">) => void;
+  addBooks: (books: Omit<Book, "id" | "date">[]) => number;
+  updateBook: (id: string, patch: Partial<Pick<Book, "title" | "author">>) => void;
+  deleteBook: (id: string) => void;
   ensureHabits: () => void;
   addHabit: (title: string, days?: number[]) => void;
   updateHabit: (id: string, patch: Partial<Pick<Habit, "title" | "days">>) => void;
@@ -554,6 +557,28 @@ export const usePlanner = create<State>()(
       deletePersonNote: (id) => set({ personNotes: (get().personNotes ?? []).filter((note) => note.id !== id) }),
       addIdea: (idea) => set({ ideas: [{ ...idea, id: uid() }, ...get().ideas] }),
       addBook: (book) => set({ books: [{ ...book, id: uid(), date: dayKey() }, ...get().books] }),
+      addBooks: (books) => {
+        const seen = new Set(get().books.map((book) => bookKey(book.title, book.author)));
+        const next = books.flatMap((book) => {
+          const title = book.title.trim();
+          const author = book.author.trim();
+          const key = bookKey(title, author);
+          if (!title || seen.has(key)) return [];
+          seen.add(key);
+          return [{ id: uid(), title, author, date: dayKey() }];
+        });
+        if (next.length) set({ books: [...next, ...get().books] });
+        return next.length;
+      },
+      updateBook: (id, patch) =>
+        set({
+          books: get().books.map((book) =>
+            book.id === id
+              ? { ...book, title: patch.title?.trim() || book.title, author: patch.author?.trim() ?? book.author }
+              : book,
+          ),
+        }),
+      deleteBook: (id) => set({ books: get().books.filter((book) => book.id !== id) }),
       ensureHabits: () => {
         const name = "Привычки";
         const patch: Partial<State> = {};
@@ -800,6 +825,10 @@ function quietCategory(name: string) {
 
 function quietCategories(names: string[]) {
   return names.filter(quietCategory);
+}
+
+function bookKey(title: string, author: string) {
+  return `${title.trim().toLowerCase()}|${author.trim().toLowerCase()}`;
 }
 
 export function weekdayOf(day: string) {
