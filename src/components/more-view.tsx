@@ -507,12 +507,23 @@ function Books({
   const [draftAuthor, setDraftAuthor] = useState("");
   const [notice, setNotice] = useState("");
   const [paste, setPaste] = useState("");
+  const [sort, setSort] = useState<"new" | "old" | "title" | "author">("new");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
   function takeList(text: string, empty: string) {
     const parsed = parseBookList(text);
     const added = onImport(parsed);
     setNotice(added ? `Добавлено книг: ${added}` : parsed.length ? "Эти книги уже есть в списке" : empty);
     return added;
   }
+  const shown = books
+    .filter((book) => (!from || book.date >= from) && (!to || book.date <= to))
+    .sort((a, b) => {
+      if (sort === "title") return a.title.localeCompare(b.title, "ru");
+      if (sort === "author") return a.author.localeCompare(b.author, "ru") || a.title.localeCompare(b.title, "ru");
+      const byDate = a.date.localeCompare(b.date) || a.title.localeCompare(b.title, "ru");
+      return sort === "old" ? byDate : -byDate;
+    });
   return (
     <div>
       <div className="mb-3 flex flex-col gap-2 sm:flex-row">
@@ -575,8 +586,29 @@ function Books({
         />
       </label>
       {notice ? <p className="mb-3 text-sm text-gold">{notice}</p> : null}
+      <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+        <select className={inputClass} value={sort} onChange={(event) => setSort(event.target.value as typeof sort)} aria-label="Сортировка">
+          <option value="new">Сначала новые</option>
+          <option value="old">Сначала старые</option>
+          <option value="title">По названию</option>
+          <option value="author">По автору</option>
+        </select>
+        <label className="flex items-center gap-2 text-sm text-mist">
+          С
+          <input className={inputClass} type="date" value={from} onChange={(event) => setFrom(event.target.value)} aria-label="Дата добавления с" />
+        </label>
+        <label className="flex items-center gap-2 text-sm text-mist">
+          По
+          <input className={inputClass} type="date" value={to} onChange={(event) => setTo(event.target.value)} aria-label="Дата добавления по" />
+        </label>
+        {from || to ? (
+          <button type="button" className="text-sm text-gold" onClick={() => { setFrom(""); setTo(""); }}>
+            Сбросить даты
+          </button>
+        ) : null}
+      </div>
       <ul className="space-y-2">
-        {books.map((book) => (
+        {shown.map((book) => (
           <li key={book.id} className="rounded-2xl border border-line bg-panel px-3 py-3">
             {editing === book.id ? (
               <form
@@ -619,6 +651,7 @@ function Books({
           </li>
         ))}
       </ul>
+      {shown.length === 0 ? <p className="text-sm text-mist">В этом фильтре книг нет.</p> : null}
     </div>
   );
 }
