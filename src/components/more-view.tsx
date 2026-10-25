@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Field, inputClass, Modal } from "@/components/modal";
 import { dayKey, monthDayLabel, nextCelebration, parseCelebration } from "@/lib/dates";
 import { usePlanner, type Book, type BookKind, type BookStatus, type Priority } from "@/lib/store";
@@ -544,7 +544,7 @@ function Books({
   onImport: (books: { title: string; author: string }[]) => number;
   onUpdate: (id: string, patch: Partial<Omit<Book, "id" | "date">>) => void;
   onDelete: (id: string) => void;
-  onTask: (id: string, action: string, comment?: string) => void;
+  onTask: (id: string, action: string, comment?: string) => boolean;
   onEntry: (id: string, entry: { kind: "thought" | "comment" | "review"; text: string; source?: string }) => void;
   onDeleteEntry: (id: string, entryId: string) => void;
 }) {
@@ -571,7 +571,13 @@ function Books({
   const [entryKind, setEntryKind] = useState<Record<string, "thought" | "comment" | "review">>({});
   const [entryText, setEntryText] = useState<Record<string, string>>({});
   const [entrySource, setEntrySource] = useState<Record<string, string>>({});
+  const [taskToast, setTaskToast] = useState("");
   const [picked, setPicked] = useState<string[]>([]);
+  useEffect(() => {
+    if (!taskToast) return;
+    const timer = window.setTimeout(() => setTaskToast(""), 4000);
+    return () => window.clearTimeout(timer);
+  }, [taskToast]);
   const shelfStatuses: BookStatus[] = shelf === "read" ? ["done", "analyzed"] : shelf === "queue" ? ["queue", "reading", "later"] : ["list"];
   function takeList(text: string, empty: string) {
     const parsed = parseBookList(text);
@@ -900,8 +906,12 @@ function Books({
                       type="button"
                       className="rounded-full border border-line px-3 py-1 text-xs text-cream"
                       onClick={() => {
-                        onTask(book.id, action, taskNote[book.id] ?? "");
-                        setNotice(`Задача «${action}: ${book.title}» в списке, категория Чтение`);
+                        const created = onTask(book.id, action, taskNote[book.id] ?? "");
+                        setTaskToast(
+                          created
+                            ? `«${action}: ${book.title}» назначена и попала в раздел «Задачи», категория «Чтение».`
+                            : `«${action}: ${book.title}» уже есть в разделе «Задачи», категория «Чтение».`,
+                        );
                       }}
                     >
                       {action}
@@ -936,6 +946,15 @@ function Books({
         ))}
       </ul>
       {shown.length === 0 ? <p className="text-sm text-mist">В этом фильтре книг нет.</p> : null}
+      {taskToast ? (
+        <div className="fixed bottom-24 left-1/2 z-40 w-[min(24rem,calc(100vw-2rem))] -translate-x-1/2 rounded-card border border-gold bg-panel px-5 py-4 shadow-xl">
+          <p className="font-display text-xl text-gold">Задача назначена</p>
+          <p className="mt-1 text-sm">{taskToast}</p>
+          <button type="button" className="mt-3 text-sm text-mist" onClick={() => setTaskToast("")}>
+            Закрыть
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }

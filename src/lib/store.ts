@@ -274,7 +274,7 @@ type State = {
   deleteBook: (id: string) => void;
   addBookEntry: (id: string, entry: { kind: BookEntry["kind"]; text: string; source?: string }) => void;
   deleteBookEntry: (id: string, entryId: string) => void;
-  assignBookTask: (id: string, action: string, comment?: string) => void;
+  assignBookTask: (id: string, action: string, comment?: string) => boolean;
   ensureHabits: () => void;
   addHabit: (title: string, days?: number[]) => void;
   updateHabit: (id: string, patch: Partial<Pick<Habit, "title" | "days">>) => void;
@@ -625,7 +625,7 @@ export const usePlanner = create<State>()(
       assignBookTask: (id, action, comment = "") => {
         const book = get().books.find((item) => item.id === id);
         const clean = action.trim();
-        if (!book || !clean) return;
+        if (!book || !clean) return false;
         const category = "Чтение";
         if (!get().timeCats.includes(category)) {
           const home = get().projects.includes("Обучение") ? "Обучение" : get().projects[0] || "Прочее";
@@ -656,12 +656,13 @@ export const usePlanner = create<State>()(
           });
         }
         const task = already ?? get().tasks.find((item) => item.title === title);
-        if (!task) return;
+        if (!task) return false;
         set({
           books: get().books.map((item) =>
             item.id === id ? { ...item, taskIds: [...new Set([...(item.taskIds ?? []), task.id])] } : item,
           ),
         });
+        return !already;
       },
       ensureHabits: () => {
         const name = "Привычки";
