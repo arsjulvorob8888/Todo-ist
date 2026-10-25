@@ -506,6 +506,13 @@ function Books({
   const [draftTitle, setDraftTitle] = useState("");
   const [draftAuthor, setDraftAuthor] = useState("");
   const [notice, setNotice] = useState("");
+  const [paste, setPaste] = useState("");
+  function takeList(text: string, empty: string) {
+    const parsed = parseBookList(text);
+    const added = onImport(parsed);
+    setNotice(added ? `Добавлено книг: ${added}` : parsed.length ? "Эти книги уже есть в списке" : empty);
+    return added;
+  }
   return (
     <div>
       <div className="mb-3 flex flex-col gap-2 sm:flex-row">
@@ -522,6 +529,25 @@ function Books({
           }}
         >
           Добавить
+        </button>
+      </div>
+      <div className="mb-3 rounded-card border border-line bg-panel p-3">
+        <textarea
+          className={`${inputClass} min-h-32`}
+          rows={6}
+          placeholder={"Вставь список целиком, по одной книге в строке:\nТихий Дон — Шолохов\nМастер и Маргарита — Булгаков"}
+          value={paste}
+          onChange={(event) => setPaste(event.target.value)}
+        />
+        <button
+          type="button"
+          className="mt-2 rounded-full bg-gold px-4 py-2 text-ink"
+          onClick={() => {
+            if (!paste.trim()) return;
+            if (takeList(paste, "В тексте не нашлось строк с книгами")) setPaste("");
+          }}
+        >
+          Вставить список
         </button>
       </div>
       <label className="mb-4 flex cursor-pointer flex-col gap-2 rounded-card border border-dashed border-line bg-panel px-4 py-3 text-sm text-mist sm:flex-row sm:items-center sm:justify-between">
@@ -542,9 +568,7 @@ function Books({
                 setNotice("Excel так не читается. Сохрани список как .txt или .csv: каждая строка — «Название — Автор»");
                 return;
               }
-              const parsed = parseBookList(text);
-              const added = onImport(parsed);
-              setNotice(added ? `Добавлено книг: ${added}` : parsed.length ? "Эти книги уже есть в списке" : "В файле не нашлось строк с книгами");
+              takeList(text, "В файле не нашлось строк с книгами");
             };
             reader.readAsText(file);
           }}
