@@ -67,7 +67,7 @@ export type Contact = { id: string; name: string; group: string; birthday: strin
 export type PersonNote = { id: string; contactId: string; text: string; created: string };
 export type Idea = { id: string; title: string; note: string };
 export type BookKind = "book" | "poem" | "article" | "author";
-export type BookStatus = "queue" | "reading" | "later" | "done" | "analyzed";
+export type BookStatus = "list" | "queue" | "reading" | "later" | "done" | "analyzed";
 export type BookEntry = { id: string; kind: "thought" | "comment" | "review"; text: string; source: string; created: string };
 export type Book = {
   id: string;
@@ -584,7 +584,7 @@ export const usePlanner = create<State>()(
           const key = bookKey(title, author);
           if (!title || seen.has(key)) return [];
           seen.add(key);
-          return [{ id: uid(), title, author, date: dayKey(), kind: "book" as const, status: "queue" as const, priority: "Средний" as const }];
+          return [{ id: uid(), title, author, date: dayKey(), kind: "book" as const, status: "list" as const, priority: "Средний" as const }];
         });
         if (next.length) set({ books: [...next, ...get().books] });
         return next.length;

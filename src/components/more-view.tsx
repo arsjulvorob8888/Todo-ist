@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { Field, inputClass, Modal } from "@/components/modal";
 import { dayKey, monthDayLabel, nextCelebration, parseCelebration } from "@/lib/dates";
@@ -116,7 +117,7 @@ export function TimeCategories() {
   );
 }
 
-export function LibraryView({ section, shelf = "queue" }: { section: keyof typeof TITLES; shelf?: "queue" | "read" }) {
+export function LibraryView({ section, shelf = "lists" }: { section: keyof typeof TITLES; shelf?: "lists" | "queue" | "read" }) {
   const projects = usePlanner((s) => s.projects);
   const timeCats = usePlanner((s) => s.timeCats);
   const catProject = usePlanner((s) => s.catProject ?? {});
@@ -144,7 +145,7 @@ export function LibraryView({ section, shelf = "queue" }: { section: keyof typeo
     <div>
       <header className="mb-4">
         <p className="text-sm text-mist">Справочник</p>
-        <h1 className="font-display text-4xl">{section === "books" ? (shelf === "read" ? "Прочитано" : "На прочтение") : TITLES[section]}</h1>
+        <h1 className="font-display text-4xl">{section === "books" ? "Чтение" : TITLES[section]}</h1>
       </header>
       {section === "time" ? (
         <Cats kind="time" names={timeCats} onAdd={addCategory} onRename={renameCategory} onDelete={deleteCategory} />
@@ -538,7 +539,7 @@ function Books({
   onDeleteEntry,
 }: {
   books: Book[];
-  shelf: "queue" | "read";
+  shelf: "lists" | "queue" | "read";
   onAdd: (book: Omit<Book, "id" | "date">) => void;
   onImport: (books: { title: string; author: string }[]) => number;
   onUpdate: (id: string, patch: Partial<Omit<Book, "id" | "date">>) => void;
@@ -570,7 +571,8 @@ function Books({
   const [entryKind, setEntryKind] = useState<Record<string, "thought" | "comment" | "review">>({});
   const [entryText, setEntryText] = useState<Record<string, string>>({});
   const [entrySource, setEntrySource] = useState<Record<string, string>>({});
-  const shelfStatuses: BookStatus[] = shelf === "read" ? ["done", "analyzed"] : ["queue", "reading", "later"];
+  const [picked, setPicked] = useState<string[]>([]);
+  const shelfStatuses: BookStatus[] = shelf === "read" ? ["done", "analyzed"] : shelf === "queue" ? ["queue", "reading", "later"] : ["list"];
   function takeList(text: string, empty: string) {
     const parsed = parseBookList(text);
     const added = onImport(parsed);
@@ -591,7 +593,55 @@ function Books({
     });
   return (
     <div>
-      {shelf === "queue" ? (
+      <nav className="mb-4 flex flex-wrap gap-2">
+        {(
+          [
+            ["lists", "Списки литературы"],
+            ["queue", "На прочтение"],
+            ["read", "Прочитано"],
+          ] as const
+        ).map(([id, label]) => {
+          const count = books.filter((book) => (id === "read" ? ["done", "analyzed"] : id === "queue" ? ["queue", "reading", "later"] : ["list"]).includes(book.status ?? "queue")).length;
+          return (
+            <Link
+              key={id}
+              to="/books"
+              search={{ shelf: id }}
+              className={`rounded-full px-4 py-2 text-sm ${shelf === id ? "bg-gold text-ink" : "border border-line text-mist"}`}
+            >
+              {label} · {count}
+            </Link>
+          );
+        })}
+      </nav>
+      <p className="text-sm text-mist">
+        {shelf === "lists"
+          ? "Сюда попадает всё интересное сразу списком. Отметь важное и отправь на прочтение."
+          : shelf === "queue"
+            ? "Это выбранное к чтению. После книги отправь её в прочитанное — мысли и рецензии сохранятся."
+            : "Здесь произведение живёт дальше: мысли, комментарии, рецензии и отметка «проанализировано»."}
+      </p>
+      {picked.length ? (
+        <div className="flex flex-wrap items-center gap-3 rounded-card border border-gold bg-panel px-3 py-3">
+          <span className="text-sm">Выбрано {picked.length}</span>
+          <button
+            type="button"
+            className="rounded-full bg-gold px-4 py-2 text-sm text-ink"
+            onClick={() => {
+              const next = shelf === "lists" ? "queue" : shelf === "queue" ? "done" : "analyzed";
+              picked.forEach((id) => onUpdate(id, { status: next }));
+              setNotice(shelf === "lists" ? "Отправлено на прочтение" : shelf === "queue" ? "Отправлено в прочитанное" : "Отмечено как проанализированное");
+              setPicked([]);
+            }}
+          >
+            {shelf === "lists" ? "На прочтение" : shelf === "queue" ? "В прочитано" : "Проанализировано"}
+          </button>
+          <button type="button" className="text-sm text-mist" onClick={() => setPicked([])}>
+            Снять выбор
+          </button>
+        </div>
+      ) : null}
+      {shelf === "lists" ? (
       <>
       <div className="mb-3 space-y-2 rounded-card border border-line bg-panel p-3">
         <input
@@ -636,7 +686,7 @@ function Books({
               deadline,
               note: note.trim(),
               link: captured.link,
-              status: "queue",
+              status: "list",
             });
             setTitle("");
             setAuthor("");
@@ -774,7 +824,17 @@ function Books({
             ) : (
               <div>
                 <div className="flex items-start justify-between gap-3">
-                  <div>
+                  <div className="flex min-w-0 gap-3">
+                    <input
+                      type="checkbox"
+                      className="mt-1 size-4 accent-gold"
+                      checked={picked.includes(book.id)}
+                      onChange={(event) =>
+                        setPicked((current) => (event.target.checked ? [...current, book.id] : current.filter((id) => id !== book.id)))
+                      }
+                      aria-label="Выбрать произведение"
+                    />
+                    <div>
                     <p>
                       {book.title}
                       {book.author ? ` — ${book.author}` : ""}
@@ -790,6 +850,20 @@ function Books({
                       </a>
                     ) : null}
                   </div>
+                  </div>
+                  <span className="flex shrink-0 flex-col items-end gap-2">
+                    <button
+                      type="button"
+                      className="rounded-full bg-gold px-3 py-1 text-xs text-ink"
+                      onClick={() => onUpdate(book.id, { status: shelf === "lists" ? "queue" : shelf === "queue" ? "done" : "analyzed" })}
+                    >
+                      {shelf === "lists" ? "На прочтение" : shelf === "queue" ? "В прочитано" : "Проанализировано"}
+                    </button>
+                    {shelf !== "lists" ? (
+                      <button type="button" className="text-xs text-mist" onClick={() => onUpdate(book.id, { status: shelf === "read" ? "queue" : "list" })}>
+                        Вернуть назад
+                      </button>
+                    ) : null}
                   <button
                     type="button"
                     className="shrink-0 text-sm text-gold"
@@ -805,6 +879,7 @@ function Books({
                   >
                     Править
                   </button>
+                  </span>
                 </div>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {BOOK_STATUSES.map((item) => (

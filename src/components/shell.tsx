@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { BarChart3, BookMarked, BookOpen, CalendarClock, Flag, FolderKanban, Lightbulb, ListChecks, Repeat, Sun, Timer, UserRound, Users, Volume2, VolumeX } from "lucide-react";
+import { BarChart3, BookOpen, CalendarClock, Flag, FolderKanban, Lightbulb, ListChecks, Repeat, Sun, Timer, UserRound, Users, Volume2, VolumeX } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Burst } from "@/components/fx";
 import { cn } from "@/lib/cn";
@@ -22,8 +22,7 @@ const NAV = [
   { to: "/projects", label: "Проекты", icon: FolderKanban, shelf: "" },
   { to: "/people", label: "Люди", icon: Users, shelf: "" },
   { to: "/ideas", label: "Идеи", icon: Lightbulb, shelf: "" },
-  { to: "/books", label: "На прочтение", icon: BookOpen, shelf: "queue" },
-  { to: "/books", label: "Прочитано", icon: BookMarked, shelf: "read" },
+  { to: "/books", label: "Чтение", icon: BookOpen, shelf: "" },
   { to: "/account", label: "Кабинет", icon: UserRound, shelf: "" },
 ] as const;
 

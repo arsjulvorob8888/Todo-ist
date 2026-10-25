@@ -3,7 +3,7 @@ import { LibraryView } from "@/components/more-view";
 
 export const Route = createFileRoute("/books")({
   validateSearch: (search: Record<string, unknown>) => ({
-    shelf: search.shelf === "read" ? ("read" as const) : ("queue" as const),
+    shelf: (search.shelf === "queue" || search.shelf === "read" ? search.shelf : "lists") as "lists" | "queue" | "read",
   }),
   component: BooksPage,
 });
