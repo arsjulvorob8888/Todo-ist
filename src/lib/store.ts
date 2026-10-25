@@ -66,7 +66,21 @@ export type Goal = {
 export type Contact = { id: string; name: string; group: string; birthday: string; kind?: "birthday" | "holiday" };
 export type PersonNote = { id: string; contactId: string; text: string; created: string };
 export type Idea = { id: string; title: string; note: string };
-export type Book = { id: string; title: string; author: string; date: string };
+export type BookKind = "book" | "poem" | "article" | "author";
+export type BookStatus = "queue" | "reading" | "done" | "later";
+export type Book = {
+  id: string;
+  title: string;
+  author: string;
+  date: string;
+  kind?: BookKind;
+  status?: BookStatus;
+  priority?: Priority;
+  deadline?: string;
+  note?: string;
+  link?: string;
+  taskIds?: string[];
+};
 
 export type Reward = { id: string; amount: number; text: string; levelUp: boolean };
 
@@ -254,8 +268,9 @@ type State = {
   addIdea: (idea: Omit<Idea, "id">) => void;
   addBook: (book: Omit<Book, "id" | "date">) => void;
   addBooks: (books: Omit<Book, "id" | "date">[]) => number;
-  updateBook: (id: string, patch: Partial<Pick<Book, "title" | "author">>) => void;
+  updateBook: (id: string, patch: Partial<Omit<Book, "id" | "date">>) => void;
   deleteBook: (id: string) => void;
+  assignBookTask: (id: string, action: string, comment?: string) => void;
   ensureHabits: () => void;
   addHabit: (title: string, days?: number[]) => void;
   updateHabit: (id: string, patch: Partial<Pick<Habit, "title" | "days">>) => void;
@@ -565,20 +580,65 @@ export const usePlanner = create<State>()(
           const key = bookKey(title, author);
           if (!title || seen.has(key)) return [];
           seen.add(key);
-          return [{ id: uid(), title, author, date: dayKey() }];
+          return [{ id: uid(), title, author, date: dayKey(), kind: "book" as const, status: "queue" as const, priority: "Средний" as const }];
         });
         if (next.length) set({ books: [...next, ...get().books] });
         return next.length;
       },
       updateBook: (id, patch) =>
         set({
-          books: get().books.map((book) =>
-            book.id === id
-              ? { ...book, title: patch.title?.trim() || book.title, author: patch.author?.trim() ?? book.author }
-              : book,
-          ),
+          books: get().books.map((book) => {
+            if (book.id !== id) return book;
+            return {
+              ...book,
+              ...patch,
+              title: patch.title !== undefined ? patch.title.trim() || book.title : book.title,
+              author: patch.author !== undefined ? patch.author.trim() : book.author,
+            };
+          }),
         }),
       deleteBook: (id) => set({ books: get().books.filter((book) => book.id !== id) }),
+      assignBookTask: (id, action, comment = "") => {
+        const book = get().books.find((item) => item.id === id);
+        const clean = action.trim();
+        if (!book || !clean) return;
+        const category = "Чтение";
+        if (!get().timeCats.includes(category)) {
+          const home = get().projects.includes("Обучение") ? "Обучение" : get().projects[0] || "Прочее";
+          set({
+            timeCats: [...get().timeCats, category].sort((a, b) => a.localeCompare(b, "ru")),
+            catProject: { ...(get().catProject ?? {}), [category]: home },
+          });
+        }
+        const projectName = get().catProject?.[category] || (get().projects.includes("Обучение") ? "Обучение" : "Прочее");
+        const board = get().boards.find((item) => item.name === projectName) || get().boards.find((item) => item.inbox);
+        const title = `${clean}: ${book.title}`;
+        const already = get().tasks.find((task) => task.title === title && task.status !== "Выполнено");
+        if (!already) {
+          const bits = [
+            book.author ? `Автор: ${book.author}` : "",
+            book.note ? `Заметка: ${book.note}` : "",
+            comment.trim() ? `Комментарий: ${comment.trim()}` : "",
+            book.link || "",
+          ].filter(Boolean);
+          get().addTask({
+            title,
+            project: board?.name ?? projectName,
+            projectId: board?.id,
+            priority: book.priority ?? "Средний",
+            deadline: book.deadline || addDays(dayKey(), 14),
+            description: bits.join("\n"),
+            category,
+          });
+        }
+        const task = already ?? get().tasks.find((item) => item.title === title);
+        if (!task) return;
+        set({
+          books: get().books.map((item) =>
+            item.id === id ? { ...item, taskIds: [...new Set([...(item.taskIds ?? []), task.id])] } : item,
+          ),
+        });
+      },
       ensureHabits: () => {
         const name = "Привычки";
         const patch: Partial<State> = {};
