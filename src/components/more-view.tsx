@@ -116,7 +116,7 @@ export function TimeCategories() {
   );
 }
 
-export function LibraryView({ section }: { section: keyof typeof TITLES }) {
+export function LibraryView({ section, shelf = "queue" }: { section: keyof typeof TITLES; shelf?: "queue" | "read" }) {
   const projects = usePlanner((s) => s.projects);
   const timeCats = usePlanner((s) => s.timeCats);
   const catProject = usePlanner((s) => s.catProject ?? {});
@@ -137,12 +137,14 @@ export function LibraryView({ section }: { section: keyof typeof TITLES }) {
   const updateBook = usePlanner((s) => s.updateBook);
   const deleteBook = usePlanner((s) => s.deleteBook);
   const assignBookTask = usePlanner((s) => s.assignBookTask);
+  const addBookEntry = usePlanner((s) => s.addBookEntry);
+  const deleteBookEntry = usePlanner((s) => s.deleteBookEntry);
 
   return (
     <div>
       <header className="mb-4">
         <p className="text-sm text-mist">Справочник</p>
-        <h1 className="font-display text-4xl">{TITLES[section]}</h1>
+        <h1 className="font-display text-4xl">{section === "books" ? (shelf === "read" ? "Прочитано" : "На прочтение") : TITLES[section]}</h1>
       </header>
       {section === "time" ? (
         <Cats kind="time" names={timeCats} onAdd={addCategory} onRename={renameCategory} onDelete={deleteCategory} />
@@ -171,7 +173,17 @@ export function LibraryView({ section }: { section: keyof typeof TITLES }) {
       ) : null}
       {section === "ideas" ? <Ideas ideas={ideas} onAdd={addIdea} /> : null}
       {section === "books" ? (
-        <Books books={books} onAdd={addBook} onImport={addBooks} onUpdate={updateBook} onDelete={deleteBook} onTask={assignBookTask} />
+        <Books
+          books={books}
+          shelf={shelf}
+          onAdd={addBook}
+          onImport={addBooks}
+          onUpdate={updateBook}
+          onDelete={deleteBook}
+          onTask={assignBookTask}
+          onEntry={addBookEntry}
+          onDeleteEntry={deleteBookEntry}
+        />
       ) : null}
     </div>
   );
@@ -495,11 +507,17 @@ const BOOK_KINDS: { id: BookKind; label: string }[] = [
   { id: "author", label: "Автор" },
 ];
 const BOOK_STATUSES: { id: BookStatus; label: string }[] = [
-  { id: "queue", label: "Очередь" },
+  { id: "queue", label: "На прочтение" },
   { id: "reading", label: "Читаю" },
-  { id: "done", label: "Прочитано" },
   { id: "later", label: "Отложено" },
+  { id: "done", label: "Прочитано" },
+  { id: "analyzed", label: "Проанализировано" },
 ];
+const ENTRY_KINDS = [
+  { id: "thought", label: "Мысль" },
+  { id: "comment", label: "Комментарий" },
+  { id: "review", label: "Рецензия" },
+] as const;
 const BOOK_ACTIONS: Record<BookKind, string[]> = {
   book: ["Прочитать", "Законспектировать", "Выписать цитаты"],
   poem: ["Проанализировать", "Выучить наизусть"],
@@ -510,18 +528,24 @@ const PRIORITIES: Priority[] = ["Срочно", "Высокий", "Средни�
 
 function Books({
   books,
+  shelf,
   onAdd,
   onImport,
   onUpdate,
   onDelete,
   onTask,
+  onEntry,
+  onDeleteEntry,
 }: {
   books: Book[];
+  shelf: "queue" | "read";
   onAdd: (book: Omit<Book, "id" | "date">) => void;
   onImport: (books: { title: string; author: string }[]) => number;
   onUpdate: (id: string, patch: Partial<Omit<Book, "id" | "date">>) => void;
   onDelete: (id: string) => void;
   onTask: (id: string, action: string, comment?: string) => void;
+  onEntry: (id: string, entry: { kind: "thought" | "comment" | "review"; text: string; source?: string }) => void;
+  onDeleteEntry: (id: string, entryId: string) => void;
 }) {
   const [title, setTitle] = useState("");
   const [author, setAuthor] = useState("");
@@ -543,6 +567,10 @@ function Books({
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [taskNote, setTaskNote] = useState<Record<string, string>>({});
+  const [entryKind, setEntryKind] = useState<Record<string, "thought" | "comment" | "review">>({});
+  const [entryText, setEntryText] = useState<Record<string, string>>({});
+  const [entrySource, setEntrySource] = useState<Record<string, string>>({});
+  const shelfStatuses: BookStatus[] = shelf === "read" ? ["done", "analyzed"] : ["queue", "reading", "later"];
   function takeList(text: string, empty: string) {
     const parsed = parseBookList(text);
     const added = onImport(parsed);
@@ -550,6 +578,7 @@ function Books({
     return added;
   }
   const shown = books
+    .filter((book) => shelfStatuses.includes(book.status ?? "queue"))
     .filter((book) => status === "all" || (book.status ?? "queue") === status)
     .filter((book) => (!from || book.date >= from) && (!to || book.date <= to))
     .sort((a, b) => {
@@ -562,6 +591,8 @@ function Books({
     });
   return (
     <div>
+      {shelf === "queue" ? (
+      <>
       <div className="mb-3 space-y-2 rounded-card border border-line bg-panel p-3">
         <input
           className={inputClass}
@@ -659,12 +690,14 @@ function Books({
           }}
         />
       </label>
+      </>
+      ) : null}
       {notice ? <p className="mb-3 text-sm text-gold">{notice}</p> : null}
       <div className="mb-3 flex flex-wrap gap-2">
         <button type="button" onClick={() => setStatus("all")} className={`rounded-full px-3 py-1 text-sm ${status === "all" ? "bg-gold text-ink" : "bg-panel-2 text-mist"}`}>
           Все
         </button>
-        {BOOK_STATUSES.map((item) => (
+        {BOOK_STATUSES.filter((item) => shelfStatuses.includes(item.id)).map((item) => (
           <button
             key={item.id}
             type="button"
@@ -806,6 +839,22 @@ function Books({
                   value={taskNote[book.id] ?? ""}
                   onChange={(event) => setTaskNote((current) => ({ ...current, [book.id]: event.target.value }))}
                 />
+                <ReadingLog
+                  bookId={book.id}
+                  entries={book.entries ?? []}
+                  kind={entryKind[book.id] ?? "thought"}
+                  text={entryText[book.id] ?? ""}
+                  source={entrySource[book.id] ?? ""}
+                  onKind={(value) => setEntryKind((current) => ({ ...current, [book.id]: value }))}
+                  onText={(value) => setEntryText((current) => ({ ...current, [book.id]: value }))}
+                  onSource={(value) => setEntrySource((current) => ({ ...current, [book.id]: value }))}
+                  onAdd={() => {
+                    onEntry(book.id, { kind: entryKind[book.id] ?? "thought", text: entryText[book.id] ?? "", source: entrySource[book.id] });
+                    setEntryText((current) => ({ ...current, [book.id]: "" }));
+                    setEntrySource((current) => ({ ...current, [book.id]: "" }));
+                  }}
+                  onDelete={(entryId) => onDeleteEntry(book.id, entryId)}
+                />
               </div>
             )}
           </li>
@@ -818,6 +867,70 @@ function Books({
 
 function priorityRank(priority?: Priority) {
   return { Срочно: 0, Высокий: 1, Средний: 2, Низкий: 3 }[priority ?? "Средний"];
+}
+
+function ReadingLog({
+  bookId,
+  entries,
+  kind,
+  text,
+  source,
+  onKind,
+  onText,
+  onSource,
+  onAdd,
+  onDelete,
+}: {
+  bookId: string;
+  entries: { id: string; kind: "thought" | "comment" | "review"; text: string; source: string; created: string }[];
+  kind: "thought" | "comment" | "review";
+  text: string;
+  source: string;
+  onKind: (kind: "thought" | "comment" | "review") => void;
+  onText: (value: string) => void;
+  onSource: (value: string) => void;
+  onAdd: () => void;
+  onDelete: (id: string) => void;
+}) {
+  const counts = ENTRY_KINDS.map((item) => `${item.label.toLowerCase()}: ${entries.filter((entry) => entry.kind === item.id).length}`).join(" · ");
+  return (
+    <div className="mt-3 border-t border-line pt-3">
+      <p className="text-xs text-mist">{counts}</p>
+      <div className="mt-2 flex flex-wrap gap-2">
+        {ENTRY_KINDS.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            onClick={() => onKind(item.id)}
+            className={`rounded-full px-3 py-1 text-xs ${kind === item.id ? "bg-gold text-ink" : "bg-panel-2 text-mist"}`}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+      {kind === "review" ? (
+        <input className={`${inputClass} mt-2`} placeholder="Критик или источник" value={source} onChange={(event) => onSource(event.target.value)} />
+      ) : null}
+      <textarea className={`${inputClass} mt-2`} rows={2} placeholder="Текст останется у этого произведения" value={text} onChange={(event) => onText(event.target.value)} />
+      <button type="button" className="mt-2 text-sm text-gold" onClick={onAdd}>
+        Добавить в карточку
+      </button>
+      <ul className="mt-2 space-y-2">
+        {entries.map((entry) => (
+          <li key={`${bookId}-${entry.id}`} className="rounded-xl bg-panel-2 px-3 py-2 text-sm">
+            <p className="text-xs text-mist">
+              {ENTRY_KINDS.find((item) => item.id === entry.kind)?.label}
+              {entry.source ? ` · ${entry.source}` : ""} · {new Date(entry.created).toLocaleString("ru-RU", { day: "numeric", month: "short" })}
+            </p>
+            <p className="mt-1 whitespace-pre-wrap">{entry.text}</p>
+            <button type="button" className="mt-1 text-xs text-ember" onClick={() => onDelete(entry.id)}>
+              Удалить
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
 }
 
 function captureWork(raw: string) {

@@ -67,7 +67,8 @@ export type Contact = { id: string; name: string; group: string; birthday: strin
 export type PersonNote = { id: string; contactId: string; text: string; created: string };
 export type Idea = { id: string; title: string; note: string };
 export type BookKind = "book" | "poem" | "article" | "author";
-export type BookStatus = "queue" | "reading" | "done" | "later";
+export type BookStatus = "queue" | "reading" | "later" | "done" | "analyzed";
+export type BookEntry = { id: string; kind: "thought" | "comment" | "review"; text: string; source: string; created: string };
 export type Book = {
   id: string;
   title: string;
@@ -80,6 +81,7 @@ export type Book = {
   note?: string;
   link?: string;
   taskIds?: string[];
+  entries?: BookEntry[];
 };
 
 export type Reward = { id: string; amount: number; text: string; levelUp: boolean };
@@ -270,6 +272,8 @@ type State = {
   addBooks: (books: Omit<Book, "id" | "date">[]) => number;
   updateBook: (id: string, patch: Partial<Omit<Book, "id" | "date">>) => void;
   deleteBook: (id: string) => void;
+  addBookEntry: (id: string, entry: { kind: BookEntry["kind"]; text: string; source?: string }) => void;
+  deleteBookEntry: (id: string, entryId: string) => void;
   assignBookTask: (id: string, action: string, comment?: string) => void;
   ensureHabits: () => void;
   addHabit: (title: string, days?: number[]) => void;
@@ -598,6 +602,26 @@ export const usePlanner = create<State>()(
           }),
         }),
       deleteBook: (id) => set({ books: get().books.filter((book) => book.id !== id) }),
+      addBookEntry: (id, entry) => {
+        const text = entry.text.trim();
+        if (!text) return;
+        const next: BookEntry = {
+          id: uid(),
+          kind: entry.kind,
+          text,
+          source: entry.source?.trim() ?? "",
+          created: new Date().toISOString(),
+        };
+        set({
+          books: get().books.map((book) => (book.id === id ? { ...book, entries: [next, ...(book.entries ?? [])] } : book)),
+        });
+      },
+      deleteBookEntry: (id, entryId) =>
+        set({
+          books: get().books.map((book) =>
+            book.id === id ? { ...book, entries: (book.entries ?? []).filter((entry) => entry.id !== entryId) } : book,
+          ),
+        }),
       assignBookTask: (id, action, comment = "") => {
         const book = get().books.find((item) => item.id === id);
         const clean = action.trim();

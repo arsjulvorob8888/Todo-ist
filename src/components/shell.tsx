@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { BarChart3, BookOpen, CalendarClock, Flag, FolderKanban, Lightbulb, ListChecks, Repeat, Sun, Timer, UserRound, Users, Volume2, VolumeX } from "lucide-react";
+import { BarChart3, BookMarked, BookOpen, CalendarClock, Flag, FolderKanban, Lightbulb, ListChecks, Repeat, Sun, Timer, UserRound, Users, Volume2, VolumeX } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Burst } from "@/components/fx";
 import { cn } from "@/lib/cn";
@@ -12,18 +12,19 @@ import { usePlanner } from "@/lib/store";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 
 const NAV = [
-  { to: "/", label: "Сегодня", icon: Sun },
-  { to: "/tasks", label: "Задачи", icon: ListChecks },
-  { to: "/timing", label: "Тайминг", icon: Timer },
-  { to: "/routine", label: "Распорядок", icon: CalendarClock },
-  { to: "/habits", label: "Привычки", icon: Repeat },
-  { to: "/stats", label: "Рост", icon: BarChart3 },
-  { to: "/goals", label: "Цели", icon: Flag },
-  { to: "/projects", label: "Проекты", icon: FolderKanban },
-  { to: "/people", label: "Люди", icon: Users },
-  { to: "/ideas", label: "Идеи", icon: Lightbulb },
-  { to: "/books", label: "Книги", icon: BookOpen },
-  { to: "/account", label: "Кабинет", icon: UserRound },
+  { to: "/", label: "Сегодня", icon: Sun, shelf: "" },
+  { to: "/tasks", label: "Задачи", icon: ListChecks, shelf: "" },
+  { to: "/timing", label: "Тайминг", icon: Timer, shelf: "" },
+  { to: "/routine", label: "Распорядок", icon: CalendarClock, shelf: "" },
+  { to: "/habits", label: "Привычки", icon: Repeat, shelf: "" },
+  { to: "/stats", label: "Рост", icon: BarChart3, shelf: "" },
+  { to: "/goals", label: "Цели", icon: Flag, shelf: "" },
+  { to: "/projects", label: "Проекты", icon: FolderKanban, shelf: "" },
+  { to: "/people", label: "Люди", icon: Users, shelf: "" },
+  { to: "/ideas", label: "Идеи", icon: Lightbulb, shelf: "" },
+  { to: "/books", label: "На прочтение", icon: BookOpen, shelf: "queue" },
+  { to: "/books", label: "Прочитано", icon: BookMarked, shelf: "read" },
+  { to: "/account", label: "Кабинет", icon: UserRound, shelf: "" },
 ] as const;
 
 export function Shell({ children }: { children: ReactNode }) {
@@ -32,6 +33,7 @@ export function Shell({ children }: { children: ReactNode }) {
 
 function Ready({ children }: { children: ReactNode }) {
   const path = useRouterState({ select: (state) => state.location.pathname });
+  const shelf = useRouterState({ select: (state) => (state.location.search as { shelf?: string }).shelf });
   const sound = usePlanner((s) => s.sound);
   const toggleSound = usePlanner((s) => s.toggleSound);
   const reward = usePlanner((s) => s.reward);
@@ -116,12 +118,13 @@ function Ready({ children }: { children: ReactNode }) {
         </Link>
         <nav className="flex min-h-0 w-full flex-1 flex-col items-center gap-1 overflow-y-auto">
         {NAV.map((item) => {
-          const active = item.to === "/" ? path === "/" : path.startsWith(item.to);
+          const active = item.shelf ? path.startsWith("/books") && (shelf === "read" ? "read" : "queue") === item.shelf : item.to === "/" ? path === "/" : path.startsWith(item.to);
           const Icon = item.icon;
           return (
             <Link
-              key={item.to}
+              key={item.label}
               to={item.to}
+              search={item.shelf ? { shelf: item.shelf } : undefined}
               className={cn(
                 "flex w-[4.5rem] flex-col items-center gap-1 rounded-2xl px-1 py-2 text-[11px]",
                 active ? "bg-gold text-ink" : "text-mist",
@@ -190,12 +193,13 @@ function Ready({ children }: { children: ReactNode }) {
 
       <nav className="fixed inset-x-0 bottom-0 z-20 flex gap-1 overflow-x-auto border-t border-line bg-panel px-1 md:hidden">
         {NAV.map((item) => {
-          const active = item.to === "/" ? path === "/" : path.startsWith(item.to);
+          const active = item.shelf ? path.startsWith("/books") && (shelf === "read" ? "read" : "queue") === item.shelf : item.to === "/" ? path === "/" : path.startsWith(item.to);
           const Icon = item.icon;
           return (
             <Link
-              key={item.to}
+              key={item.label}
               to={item.to}
+              search={item.shelf ? { shelf: item.shelf } : undefined}
               className={cn(
                 "flex w-16 shrink-0 flex-col items-center gap-1 py-2 text-[10px]",
                 active ? "text-gold" : "text-mist",
