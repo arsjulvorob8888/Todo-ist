@@ -1,4 +1,5 @@
 import { createHash, timingSafeEqual } from "node:crypto";
+import { sanitizeActionHint, sanitizeActionUrl } from "./kremlin-action.ts";
 import { KREMLIN_PROJECT, projectsIncludingKremlin } from "./kremlin-merge.ts";
 
 const MAX_BODY_BYTES = 256 * 1024;
@@ -23,6 +24,10 @@ export type IngestTask = {
   status: KremlinStatus;
   deadline: string | null;
   description: string;
+  /** Present only when the payload included a usable https or grokbot URL. */
+  actionUrl?: string;
+  /** Present only when the payload included plain text within the length cap. */
+  actionHint?: string;
 };
 
 export type IngestGoal = {
@@ -68,6 +73,8 @@ export type StoredTask = {
   labelIds?: string[];
   order?: number;
   category?: string;
+  actionUrl?: string;
+  actionHint?: string;
   updatedAt?: number;
 };
 
@@ -269,7 +276,8 @@ export type ApplyResult = {
 /**
  * Upsert Kremlin tasks and goals into a planner slot.
  * Rows absent from the payload are left in place. A stored row with a newer
- * updatedAt is left in place as well.
+ * updatedAt is left in place as well. An omitted or rejected action field
+ * does not clear one already stored on the task.
  */
 export function applyKremlinIngest(slot: IngestSlot, payload: KremlinPayload): ApplyResult {
   const tasks = slot.tasks.map((task) => ({ ...task }));
@@ -326,6 +334,7 @@ export function applyKremlinIngest(slot: IngestSlot, payload: KremlinPayload): A
       labelIds: existing?.labelIds ?? [],
       ...(existing?.order != null ? { order: existing.order } : {}),
       ...(existing?.category ? { category: existing.category } : {}),
+      ...keptAction(incoming, existing),
       updatedAt: payload.sentAtMs,
     };
     if (!existing) {
@@ -519,6 +528,7 @@ function parseTask(entry: unknown, index: string | number): IngestTask | string 
     status: status.value,
     deadline: deadline.value,
     description: description.value,
+    ...readAction(entry),
   };
 }
 
@@ -635,6 +645,24 @@ function stamp(item: { updatedAt?: number }): number {
   return typeof item.updatedAt === "number" && Number.isFinite(item.updatedAt) ? item.updatedAt : 0;
 }
 
+function readAction(entry: Record<string, unknown>): Pick<IngestTask, "actionUrl" | "actionHint"> {
+  const actionUrl = sanitizeActionUrl(entry.actionUrl);
+  const actionHint = sanitizeActionHint(entry.actionHint);
+  return {
+    ...(actionUrl ? { actionUrl } : {}),
+    ...(actionHint ? { actionHint } : {}),
+  };
+}
+
+function keptAction(incoming: IngestTask, existing: StoredTask | undefined): Pick<StoredTask, "actionUrl" | "actionHint"> {
+  const actionUrl = incoming.actionUrl ?? sanitizeActionUrl(existing?.actionUrl);
+  const actionHint = incoming.actionHint ?? sanitizeActionHint(existing?.actionHint);
+  return {
+    ...(actionUrl ? { actionUrl } : {}),
+    ...(actionHint ? { actionHint } : {}),
+  };
+}
+
 function completedAt(existing: StoredTask | undefined, status: KremlinStatus, sentAt: string): string {
   if (status !== "Выполнено") return "";
   if (existing?.status === "Выполнено" && existing.completed) return existing.completed;
@@ -650,7 +678,9 @@ function sameTask(existing: StoredTask, next: StoredTask): boolean {
     existing.description === next.description &&
     existing.project === next.project &&
     existing.projectId === next.projectId &&
-    (existing.completed || "") === next.completed
+    (existing.completed || "") === next.completed &&
+    (existing.actionUrl || "") === (next.actionUrl || "") &&
+    (existing.actionHint || "") === (next.actionHint || "")
   );
 }
 

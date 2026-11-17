@@ -83,7 +83,12 @@ export function withKremlinProjectName(payload: unknown, keep: boolean): unknown
 }
 
 type BoardLike = Mergeable & { name: string };
-type TaskLike = Mergeable & { project?: string; projectId?: string };
+type TaskLike = Mergeable & {
+  project?: string;
+  projectId?: string;
+  actionUrl?: string;
+  actionHint?: string;
+};
 
 /**
  * One board named «Кремль». Prefer the board the owner already had locally

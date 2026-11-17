@@ -4,7 +4,7 @@ import { Field, inputClass, Modal } from "@/components/modal";
 import { addDays, dayKey } from "@/lib/dates";
 import { playStart, playTap } from "@/lib/sound";
 import { compareTasks, usePlanner, type Board, type Mark, type Priority, type Task } from "@/lib/store";
-import { KremlinBadge, isKremlinSource, kremlinCardClass, kremlinCardStyle, kremlinProjectClass } from "@/lib/kremlin-mark";
+import { KremlinAction, KremlinBadge, isKremlinSource, kremlinCardClass, kremlinCardStyle, kremlinProjectClass } from "@/lib/kremlin-mark";
 
 const PRIORITIES: Priority[] = ["Срочно", "Высокий", "Средний", "Низкий"];
 const OPEN = "Все кроме выполнено";
@@ -397,6 +397,7 @@ function TaskRow({
               ))}
           </p>
         ) : null}
+        <KremlinAction source={task.source} actionUrl={task.actionUrl} actionHint={task.actionHint} className="mt-2" />
       </div>
       <div className="ml-auto flex flex-wrap items-center justify-end gap-x-3 gap-y-2">
       {left ? (
@@ -501,6 +502,7 @@ function TaskForm({
         <textarea className={inputClass} rows={3} value={description} onChange={(event) => setDescription(event.target.value)} />
       </Field>
       {initial?.created ? <p className="mb-3 text-sm text-mist">Поставлена {formatCreated(initial.created)}. Это время не меняется.</p> : null}
+      <KremlinAction source={initial?.source} actionUrl={initial?.actionUrl} actionHint={initial?.actionHint} className="mb-3" />
       {error ? <p className="mb-2 text-sm text-ember">{error}</p> : null}
       <button
         type="button"

@@ -113,3 +113,20 @@
 .kremlin-project {
   color: #fecdd3;
 }
+
+.kremlin-action-block {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.kremlin-action {
+  background-color: #e11d2e;
+  color: #fff7f7;
+  cursor: pointer;
+}
+
+.kremlin-action-url,
+.kremlin-action-hint {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
