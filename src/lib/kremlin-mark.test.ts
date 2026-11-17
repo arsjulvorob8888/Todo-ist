@@ -15,6 +15,8 @@ describe("kremlin mark", () => {
 
     assert.equal(isKremlinSource({ source: "kremlin" }), true);
     assert.equal(isKremlinSource({ source: undefined }), false);
+    assert.equal(isKremlinSource({ externalId: "task-1" }), true);
+    assert.equal(isKremlinSource({ externalId: "  " }), false);
     assert.match(kremlinCardClass({ source: "kremlin" }), /kremlin-source/);
     assert.equal(kremlinCardClass({}), "");
     assert.match(kremlin, /data-testid="kremlin-badge"/);

@@ -13,6 +13,7 @@ export const Route = createRootRoute({
       { name: "theme-color", content: "#12110e" },
     ],
     links: [
+      { rel: "icon", href: "/favicon.ico", type: "image/svg+xml" },
       { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
       { rel: "stylesheet", href: "/fonts/fonts.css" },
       { rel: "stylesheet", href: appCss },

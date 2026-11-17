@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AccountRouteImport } from './routes/account'
 import { Route as BooksRouteImport } from './routes/books'
+import { Route as FaviconDoticoRouteImport } from './routes/favicon[.]ico'
 import { Route as GoalsRouteImport } from './routes/goals'
 import { Route as HabitsRouteImport } from './routes/habits'
 import { Route as IdeasRouteImport } from './routes/ideas'
@@ -39,6 +40,11 @@ const AccountRoute = AccountRouteImport.update({
 const BooksRoute = BooksRouteImport.update({
   id: '/books',
   path: '/books',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FaviconDoticoRoute = FaviconDoticoRouteImport.update({
+  id: '/favicon.ico',
+  path: '/favicon.ico',
   getParentRoute: () => rootRouteImport,
 } as any)
 const GoalsRoute = GoalsRouteImport.update({
@@ -111,6 +117,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
   '/books': typeof BooksRoute
+  '/favicon.ico': typeof FaviconDoticoRoute
   '/goals': typeof GoalsRoute
   '/habits': typeof HabitsRoute
   '/ideas': typeof IdeasRoute
@@ -129,6 +136,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
   '/books': typeof BooksRoute
+  '/favicon.ico': typeof FaviconDoticoRoute
   '/goals': typeof GoalsRoute
   '/habits': typeof HabitsRoute
   '/ideas': typeof IdeasRoute
@@ -148,6 +156,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
   '/books': typeof BooksRoute
+  '/favicon.ico': typeof FaviconDoticoRoute
   '/goals': typeof GoalsRoute
   '/habits': typeof HabitsRoute
   '/ideas': typeof IdeasRoute
@@ -168,6 +177,7 @@ export interface FileRouteTypes {
     | '/'
     | '/account'
     | '/books'
+    | '/favicon.ico'
     | '/goals'
     | '/habits'
     | '/ideas'
@@ -186,6 +196,7 @@ export interface FileRouteTypes {
     | '/'
     | '/account'
     | '/books'
+    | '/favicon.ico'
     | '/goals'
     | '/habits'
     | '/ideas'
@@ -204,6 +215,7 @@ export interface FileRouteTypes {
     | '/'
     | '/account'
     | '/books'
+    | '/favicon.ico'
     | '/goals'
     | '/habits'
     | '/ideas'
@@ -223,6 +235,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AccountRoute: typeof AccountRoute
   BooksRoute: typeof BooksRoute
+  FaviconDoticoRoute: typeof FaviconDoticoRoute
   GoalsRoute: typeof GoalsRoute
   HabitsRoute: typeof HabitsRoute
   IdeasRoute: typeof IdeasRoute
@@ -259,6 +272,13 @@ declare module '@tanstack/react-router' {
       path: '/books'
       fullPath: '/books'
       preLoaderRoute: typeof BooksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/favicon.ico': {
+      id: '/favicon.ico'
+      path: '/favicon.ico'
+      fullPath: '/favicon.ico'
+      preLoaderRoute: typeof FaviconDoticoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/goals': {
@@ -359,6 +379,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AccountRoute: AccountRoute,
   BooksRoute: BooksRoute,
+  FaviconDoticoRoute: FaviconDoticoRoute,
   GoalsRoute: GoalsRoute,
   HabitsRoute: HabitsRoute,
   IdeasRoute: IdeasRoute,

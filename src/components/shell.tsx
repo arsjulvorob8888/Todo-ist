@@ -7,7 +7,7 @@ import { fmtSpan } from "@/lib/dates";
 import { playBell, playLevel, playWin, playXp, setSoundEnabled } from "@/lib/sound";
 import { startSync, useSyncStatus } from "@/lib/sync";
 import { restoreIfBlank, startBackup } from "@/lib/backup";
-import { recoverIfEmpty } from "@/lib/recovery";
+import { recoverIfEmpty, tasksForSession } from "@/lib/recovery";
 import { usePlanner } from "@/lib/store";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 
@@ -42,7 +42,10 @@ function Ready({ children }: { children: ReactNode }) {
   const completeTask = usePlanner((s) => s.completeTask);
   const burst = usePlanner((s) => s.burst);
   const pomo = usePlanner((s) => s.pomo);
-  const tasks = usePlanner((s) => s.tasks);
+  const allTasks = usePlanner((s) => s.tasks);
+  const { user, isPending } = useCurrentUserState();
+  const signedIn = Boolean(user && !user.isDevFallback);
+  const tasks = tasksForSession(allTasks, { signedIn });
   const habits = usePlanner((s) => s.habits);
   const pausePomo = usePlanner((s) => s.pausePomo);
   const stopPomo = usePlanner((s) => s.stopPomo);
@@ -64,9 +67,9 @@ function Ready({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (status === "sync") sawSync.current = true;
-    if (!sawSync.current || status === "sync") return;
-    recoverIfEmpty();
-  }, [status]);
+    if (!sawSync.current || status === "sync" || isPending) return;
+    recoverIfEmpty({ signedIn });
+  }, [status, isPending, signedIn]);
 
   useEffect(() => {
     const id = window.setInterval(() => setNow(Date.now()), 1000);
@@ -140,7 +143,7 @@ function Ready({ children }: { children: ReactNode }) {
         </button>
       </aside>
 
-      <main className="mx-auto min-h-screen max-w-5xl px-4 pt-6 pb-28 md:pl-32 md:pr-8">
+      <main className="app-scroll-pad mx-auto min-h-screen max-w-5xl px-4 pt-6 md:pl-32 md:pr-8">
         <div className="mb-4 flex items-center gap-3">
           <Link to="/account" aria-label="Аккаунт">
             <AccountMark />
@@ -190,7 +193,7 @@ function Ready({ children }: { children: ReactNode }) {
 
       {burst > 0 ? <Burst nonce={burst} /> : null}
 
-      <nav className="fixed inset-x-0 bottom-0 z-20 flex w-full max-w-[100vw] gap-1 overflow-x-auto border-t border-line bg-panel px-1 md:hidden">
+      <nav className="mobile-nav fixed inset-x-0 bottom-0 z-20 flex w-full max-w-[100vw] gap-1 overflow-x-auto border-t border-line bg-panel px-1 md:hidden">
         {NAV.map((item) => {
           const active = item.shelf ? path.startsWith("/books") && (shelf === "read" ? "read" : "queue") === item.shelf : item.to === "/" ? path === "/" : path.startsWith(item.to);
           const Icon = item.icon;

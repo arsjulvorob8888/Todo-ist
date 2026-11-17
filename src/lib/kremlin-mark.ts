@@ -7,8 +7,11 @@ export const KREMLIN_SOURCE = "kremlin" as const;
 export const KREMLIN_RED = "#e11d2e";
 export const KREMLIN_BADGE_BG = "#9f1239";
 
-export function isKremlinSource(item: { source?: string } | null | undefined): boolean {
-  return item?.source === KREMLIN_SOURCE;
+/** Kremlin rows are marked with `source`, and tasks also carry `externalId`. */
+export function isKremlinSource(item: { source?: string; externalId?: string } | null | undefined): boolean {
+  if (!item) return false;
+  if (item.source === KREMLIN_SOURCE) return true;
+  return typeof item.externalId === "string" && item.externalId.trim().length > 0;
 }
 
 /** Extra classes for a Kremlin card. Empty for everything else, so other items stay as they are. */

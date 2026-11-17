@@ -323,7 +323,8 @@ export const usePlanner = create<State>()(
       routineDone: {},
       tasks: [],
       spans: [],
-      goals: [{ id: "mission-goal", title: "Финансовая свобода", content: "Чистая прибыль 300 000 ₽ в месяц. Капитал 10 млн. Пассив 100 000 ₽." }],
+      // «Финансовая свобода» приходит из recovery только после входа, не в анонимной сессии.
+      goals: [],
       contacts: [],
       personNotes: [],
       ideas: [],
