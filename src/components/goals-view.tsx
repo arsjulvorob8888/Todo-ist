@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { Field, inputClass, Modal } from "@/components/modal";
 import { dayKey } from "@/lib/dates";
 import { playTap } from "@/lib/sound";
+import { useCurrentUserState } from "@/lib/auth/use-current-user";
+import { goalsForSession } from "@/lib/recovery";
 import { usePlanner, type Goal, type Kpi } from "@/lib/store";
 import { KremlinBadge, isKremlinSource, kremlinCardClass, kremlinCardStyle } from "@/lib/kremlin-mark";
 
@@ -10,7 +12,10 @@ const uid = () => crypto.randomUUID();
 export function GoalsView() {
   const mission = usePlanner((s) => s.mission);
   const setMission = usePlanner((s) => s.setMission);
-  const goals = usePlanner((s) => s.goals);
+  const storedGoals = usePlanner((s) => s.goals);
+  const { user } = useCurrentUserState();
+  const signedIn = Boolean(user && !user.isDevFallback);
+  const goals = goalsForSession(storedGoals, { signedIn });
   const addGoal = usePlanner((s) => s.addGoal);
   const updateGoal = usePlanner((s) => s.updateGoal);
   const toggleGoal = usePlanner((s) => s.toggleGoal);

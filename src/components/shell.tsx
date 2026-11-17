@@ -7,7 +7,7 @@ import { fmtSpan } from "@/lib/dates";
 import { playBell, playLevel, playWin, playXp, setSoundEnabled } from "@/lib/sound";
 import { startSync, useSyncStatus } from "@/lib/sync";
 import { restoreIfBlank, startBackup } from "@/lib/backup";
-import { recoverIfEmpty } from "@/lib/recovery";
+import { recoverIfEmpty, tasksForSession } from "@/lib/recovery";
 import { usePlanner } from "@/lib/store";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 
@@ -42,7 +42,10 @@ function Ready({ children }: { children: ReactNode }) {
   const completeTask = usePlanner((s) => s.completeTask);
   const burst = usePlanner((s) => s.burst);
   const pomo = usePlanner((s) => s.pomo);
-  const tasks = usePlanner((s) => s.tasks);
+  const allTasks = usePlanner((s) => s.tasks);
+  const { user, isPending } = useCurrentUserState();
+  const signedIn = Boolean(user && !user.isDevFallback);
+  const tasks = tasksForSession(allTasks, { signedIn });
   const habits = usePlanner((s) => s.habits);
   const pausePomo = usePlanner((s) => s.pausePomo);
   const stopPomo = usePlanner((s) => s.stopPomo);
@@ -64,9 +67,9 @@ function Ready({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (status === "sync") sawSync.current = true;
-    if (!sawSync.current || status === "sync") return;
-    recoverIfEmpty();
-  }, [status]);
+    if (!sawSync.current || status === "sync" || isPending) return;
+    recoverIfEmpty({ signedIn });
+  }, [status, isPending, signedIn]);
 
   useEffect(() => {
     const id = window.setInterval(() => setNow(Date.now()), 1000);

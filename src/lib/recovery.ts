@@ -1,6 +1,9 @@
 import { usePlanner, type Goal, type Priority, type Span, type Status, type Task } from "@/lib/store";
 
-const FLAG = "todo-aka-recovery-2";
+export const RECOVERY_FLAG = "todo-aka-recovery-2";
+export const SIGN_IN_TASKS_MESSAGE = "Войдите, чтобы увидеть свои задачи";
+const SEEDED_FINANCE_TITLE = "Финансовая свобода";
+const SEEDED_FINANCE_IDS = new Set(["mission-goal", "recovered-finance"]);
 
 const CATS = [
   "DevOps",
@@ -105,9 +108,17 @@ const SPANS: Span[] = [
   span("recovered-span-food", "Еда", "2026-10-20T13:27:00+02:00", "2026-10-20T13:43:00+02:00"),
 ];
 
-export function recoverIfEmpty() {
-  if (typeof localStorage === "undefined" || localStorage.getItem(FLAG) === "done") return;
-  const state = usePlanner.getState();
+type RecoverySlice = {
+  tasks: Task[];
+  goals: Goal[];
+  timeCats: string[];
+  spans: Span[];
+  labels: { id: string; name: string; color: string }[];
+  xp: number;
+};
+
+/** Same merge the signed-in recovery has always applied after a real data loss. */
+export function applyRecovery(state: RecoverySlice): RecoverySlice {
   const titles = new Set(state.tasks.map((item) => item.title));
   const tasks = [
     ...state.tasks.map((item) => {
@@ -127,13 +138,50 @@ export function recoverIfEmpty() {
   const labels = state.labels.some((item) => item.name === "!!!")
     ? state.labels
     : [...state.labels, { id: "bang", name: "!!!", color: "#c58af9" }];
-  usePlanner.setState({
+  return {
     tasks,
     goals,
     timeCats,
     spans,
     labels,
     xp: Math.max(state.xp, 144),
-  });
-  localStorage.setItem(FLAG, "done");
+  };
+}
+
+export function isRecoveryStarterTask(task: { id: string }): boolean {
+  return task.id.startsWith("recovered-");
+}
+
+export function isSeededFinanceGoal(goal: { id: string; title: string }): boolean {
+  return SEEDED_FINANCE_IDS.has(goal.id) && goal.title === SEEDED_FINANCE_TITLE;
+}
+
+/** Signed-in people keep recovered rows. An anonymous visit does not show them. */
+export function tasksForSession<T extends { id: string }>(tasks: readonly T[], session: { signedIn: boolean }): T[] {
+  if (session.signedIn) return tasks as T[];
+  return tasks.filter((task) => !isRecoveryStarterTask(task));
+}
+
+export function goalsForSession<T extends { id: string; title: string }>(goals: readonly T[], session: { signedIn: boolean }): T[] {
+  if (session.signedIn) return goals as T[];
+  return goals.filter((goal) => !isSeededFinanceGoal(goal));
+}
+
+export function showSignInTasksPrompt(
+  session: { authEnabled: boolean; pending: boolean; signedIn: boolean },
+  taskCount: number,
+): boolean {
+  return session.authEnabled && !session.pending && !session.signedIn && taskCount === 0;
+}
+
+/**
+ * One-shot restore after the signed-in sync. Anonymous sessions skip it and
+ * do not consume the flag, so a later sign-in can still restore a blank device.
+ */
+export function recoverIfEmpty(session: { signedIn: boolean }) {
+  if (!session.signedIn) return;
+  if (typeof localStorage === "undefined" || localStorage.getItem(RECOVERY_FLAG) === "done") return;
+  const state = usePlanner.getState();
+  usePlanner.setState(applyRecovery(state));
+  localStorage.setItem(RECOVERY_FLAG, "done");
 }

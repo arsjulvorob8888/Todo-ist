@@ -5,13 +5,19 @@ import { ScorePips } from "@/components/score-pips";
 import { dayKey, fmtHm, fmtSpan, formatDay, nextCelebration } from "@/lib/dates";
 import { quoteForNow } from "@/lib/quotes";
 import { playHabit, playStart, playTap, playWin } from "@/lib/sound";
+import { authEnabled } from "@/lib/auth/client";
+import { useCurrentUserState } from "@/lib/auth/use-current-user";
+import { SIGN_IN_TASKS_MESSAGE, tasksForSession } from "@/lib/recovery";
 import { dayScore, habitDue, habitStreak, levelInfo, spanSeconds, streakCount, usePlanner, type Contact, type Pomo, type Task } from "@/lib/store";
 import { KremlinAction, KremlinBadge, isKremlinSource, kremlinCardClass, kremlinCardStyle } from "@/lib/kremlin-mark";
 
 export function Today() {
   const habits = usePlanner((s) => s.habits);
   const contacts = usePlanner((s) => s.contacts);
-  const tasks = usePlanner((s) => s.tasks);
+  const storedTasks = usePlanner((s) => s.tasks);
+  const { user, isPending } = useCurrentUserState();
+  const signedIn = Boolean(user && !user.isDevFallback);
+  const tasks = tasksForSession(storedTasks, { signedIn });
   const ensureHabits = usePlanner((s) => s.ensureHabits);
   const toggleHabit = usePlanner((s) => s.toggleHabit);
   const spans = usePlanner((s) => s.spans);
@@ -28,6 +34,8 @@ export function Today() {
   const stopPomo = usePlanner((s) => s.stopPomo);
   const pomo = usePlanner((s) => s.pomo);
   const [pomoTask, setPomoTask] = useState("");
+  const [sessionReady, setSessionReady] = useState(false);
+  useEffect(() => setSessionReady(true), []);
   const today = dayKey();
   const [, setTick] = useState(0);
   useEffect(() => {
@@ -244,7 +252,11 @@ export function Today() {
           </Link>
         </div>
         {openTasks.length === 0 ? (
-          <p className="rounded-card border border-dashed border-line p-6 text-mist">Список пуст. Добавь одно дело — и закрой его.</p>
+          <p className="rounded-card border border-dashed border-line p-6 text-mist">
+            {sessionReady && authEnabled && !isPending && !signedIn && tasks.length === 0
+              ? SIGN_IN_TASKS_MESSAGE
+              : "Список пуст. Добавь одно дело — и закрой его."}
+          </p>
         ) : (
           <ul className="space-y-2">
             {openTasks.map((task) => {

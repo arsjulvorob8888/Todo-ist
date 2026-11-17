@@ -1,17 +1,33 @@
 import { useEffect, useRef, useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { GripVertical } from "lucide-react";
 import { Field, inputClass, Modal } from "@/components/modal";
+import { authEnabled } from "@/lib/auth/client";
+import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { addDays, dayKey } from "@/lib/dates";
 import { playStart, playTap } from "@/lib/sound";
+import { SIGN_IN_TASKS_MESSAGE, showSignInTasksPrompt, tasksForSession } from "@/lib/recovery";
 import { compareTasks, usePlanner, type Board, type Mark, type Priority, type Task } from "@/lib/store";
+import {
+  DEFAULT_TASK_FILTERS,
+  OPEN_STATUS,
+  TASK_DUES,
+  TASK_PRIORITIES,
+  TASK_SOURCES,
+  TASK_STATUSES,
+  loadTaskFilters,
+  matchesTaskSource,
+  saveTaskFilters,
+  type TaskFilterState,
+  type TaskSourceFilter,
+} from "@/lib/task-filters";
 import { KremlinAction, KremlinBadge, isKremlinSource, kremlinCardClass, kremlinCardStyle, kremlinProjectClass } from "@/lib/kremlin-mark";
 
-const PRIORITIES: Priority[] = ["Срочно", "Высокий", "Средний", "Низкий"];
-const OPEN = "Все кроме выполнено";
-const STATUSES = [OPEN, "Все", "В ожидании", "В процессе", "Выполнено"];
-
 export function TasksView() {
-  const tasks = usePlanner((s) => s.tasks);
+  const storedTasks = usePlanner((s) => s.tasks);
+  const { user, isPending } = useCurrentUserState();
+  const signedIn = Boolean(user && !user.isDevFallback);
+  const tasks = tasksForSession(storedTasks, { signedIn });
   const projects = usePlanner((s) => s.projects);
   const addTask = usePlanner((s) => s.addTask);
   const pomo = usePlanner((s) => s.pomo);
@@ -27,11 +43,10 @@ export function TasksView() {
   const catProject = usePlanner((s) => s.catProject ?? {});
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Task | null>(null);
-  const [filter, setFilter] = useState(OPEN);
-  const [priority, setPriority] = useState("Все");
-  const [due, setDue] = useState("Все");
-  const [project, setProject] = useState("Все");
-  const [labelId, setLabelId] = useState("Все");
+  const [filters, setFilters] = useState<TaskFilterState>(DEFAULT_TASK_FILTERS);
+  const [filtersReady, setFiltersReady] = useState(false);
+  const [sessionReady, setSessionReady] = useState(false);
+  const { status: filter, priority, due, project, labelId, source } = filters;
   const [labelName, setLabelName] = useState("");
   const [now, setNow] = useState(Date.now());
   const [dragId, setDragId] = useState("");
@@ -45,13 +60,25 @@ export function TasksView() {
     return () => window.clearInterval(id);
   }, []);
 
+  useEffect(() => {
+    setFilters(loadTaskFilters(window.localStorage));
+    setFiltersReady(true);
+    setSessionReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!filtersReady) return;
+    saveTaskFilters(window.localStorage, filters);
+  }, [filters, filtersReady]);
+
   const visible = tasks.filter((task) => {
-    if (filter === OPEN && task.status === "Выполнено") return false;
-    if (filter !== "Все" && filter !== OPEN && task.status !== filter) return false;
+    if (filter === OPEN_STATUS && task.status === "Выполнено") return false;
+    if (filter !== "Все" && filter !== OPEN_STATUS && task.status !== filter) return false;
     if (priority !== "Все" && task.priority !== priority) return false;
     if (!matchesDue(task, due)) return false;
     if (project !== "Все" && task.projectId !== project && task.project !== project) return false;
     if (labelId !== "Все" && !(task.labelIds ?? []).includes(labelId)) return false;
+    if (!matchesTaskSource(task, source)) return false;
     return true;
   }).sort(compareTasks);
 
@@ -70,12 +97,12 @@ export function TasksView() {
     playTap();
   }
 
+  function patchFilters(patch: Partial<TaskFilterState>) {
+    setFilters((current) => ({ ...current, ...patch }));
+  }
+
   function resetFilters() {
-    setFilter(OPEN);
-    setPriority("Все");
-    setDue("Все");
-    setProject("Все");
-    setLabelId("Все");
+    setFilters(DEFAULT_TASK_FILTERS);
   }
 
   return (
@@ -90,17 +117,17 @@ export function TasksView() {
         </button>
       </header>
       <div className="mb-4 flex flex-wrap gap-2">
-        {STATUSES.map((name) => (
+        {TASK_STATUSES.map((name) => (
           <button
             key={name}
             type="button"
-            onClick={() => setFilter(name)}
+            onClick={() => patchFilters({ status: name })}
             className={`rounded-full px-3 py-2 text-sm ${filter === name ? "bg-gold text-ink" : "bg-panel text-mist"}`}
           >
             {name}
           </button>
         ))}
-        <select className={inputClass + " w-auto"} value={project} onChange={(event) => setProject(event.target.value)}>
+        <select className={inputClass + " w-auto"} value={project} onChange={(event) => patchFilters({ project: event.target.value })}>
           <option value="Все">Все проекты</option>
           {boards.map((board) => (
             <option key={board.id} value={board.id} className={kremlinProjectClass(board.name, boards)}>
@@ -112,7 +139,7 @@ export function TasksView() {
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <button
           type="button"
-          onClick={() => setLabelId("Все")}
+          onClick={() => patchFilters({ labelId: "Все" })}
           className={`rounded-full px-3 py-1 text-sm ${labelId === "Все" ? "bg-gold text-ink" : "bg-panel text-mist"}`}
         >
           Все метки
@@ -121,7 +148,7 @@ export function TasksView() {
           <button
             key={label.id}
             type="button"
-            onClick={() => setLabelId(label.id)}
+            onClick={() => patchFilters({ labelId: label.id })}
             className={`rounded-full px-3 py-1 text-sm ${labelId === label.id ? "text-ink" : "text-cream"}`}
             style={{ background: labelId === label.id ? label.color : "transparent", border: `1px solid ${label.color}` }}
           >
@@ -145,28 +172,40 @@ export function TasksView() {
           Метка
         </button>
       </div>
-      <div className="mb-3 grid gap-2 sm:grid-cols-3">
+      <div className="mb-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
         <label className="text-xs tracking-wide text-mist uppercase">
           Важность
-          <select className={inputClass + " mt-1"} value={priority} onChange={(event) => setPriority(event.target.value)}>
-            <option value="Все">Все</option>
-            {PRIORITIES.map((name) => (
+          <select className={inputClass + " mt-1"} value={priority} onChange={(event) => patchFilters({ priority: event.target.value })}>
+            {TASK_PRIORITIES.map((name) => (
               <option key={name}>{name}</option>
             ))}
           </select>
         </label>
         <label className="text-xs tracking-wide text-mist uppercase">
           Статус
-          <select className={inputClass + " mt-1"} value={filter} onChange={(event) => setFilter(event.target.value)}>
-            {STATUSES.map((name) => (
+          <select className={inputClass + " mt-1"} value={filter} onChange={(event) => patchFilters({ status: event.target.value })}>
+            {TASK_STATUSES.map((name) => (
               <option key={name}>{name}</option>
             ))}
           </select>
         </label>
         <label className="text-xs tracking-wide text-mist uppercase">
           Дедлайн
-          <select className={inputClass + " mt-1"} value={due} onChange={(event) => setDue(event.target.value)}>
-            {["Все", "Просрочен", "Сегодня", "Завтра", "7 дней", "Без дедлайна"].map((name) => (
+          <select className={inputClass + " mt-1"} value={due} onChange={(event) => patchFilters({ due: event.target.value })}>
+            {TASK_DUES.map((name) => (
+              <option key={name}>{name}</option>
+            ))}
+          </select>
+        </label>
+        <label className="text-xs tracking-wide text-mist uppercase">
+          Источник
+          <select
+            className={inputClass + " mt-1"}
+            data-testid="task-source-filter"
+            value={source}
+            onChange={(event) => patchFilters({ source: event.target.value as TaskSourceFilter })}
+          >
+            {TASK_SOURCES.map((name) => (
               <option key={name}>{name}</option>
             ))}
           </select>
@@ -218,18 +257,26 @@ export function TasksView() {
         ))}
       </ul>
       {visible.length === 0 ? (
-        <p className="mt-6 text-mist">
-          {tasks.length === 0 ? "Нет задач в этом фильтре." : "В этом фильтре пусто."}
-          {tasks.length > 0 ? (
-            <button
-              type="button"
-              className="ml-3 rounded-full bg-gold px-3 py-1 text-ink"
-              onClick={resetFilters}
-            >
-              Показать все ({tasks.length})
-            </button>
-          ) : null}
-        </p>
+        sessionReady && showSignInTasksPrompt({ authEnabled, pending: isPending, signedIn }, tasks.length) ? (
+          <p className="mt-6 text-mist">
+            <Link to="/account" className="underline decoration-gold/40 underline-offset-4">
+              {SIGN_IN_TASKS_MESSAGE}
+            </Link>
+          </p>
+        ) : (
+          <p className="mt-6 text-mist">
+            {tasks.length === 0 ? "Нет задач в этом фильтре." : "В этом фильтре пусто."}
+            {tasks.length > 0 ? (
+              <button
+                type="button"
+                className="ml-3 rounded-full bg-gold px-3 py-1 text-ink"
+                onClick={resetFilters}
+              >
+                Показать все ({tasks.length})
+              </button>
+            ) : null}
+          </p>
+        )
       ) : null}
       {open ? (
         <TaskForm
@@ -241,10 +288,7 @@ export function TasksView() {
           onClose={() => setOpen(false)}
           onSave={(task) => {
             addTask(task);
-            setFilter(OPEN);
-            setPriority("Все");
-            setDue("Все");
-            setProject("Все");
+            patchFilters({ status: OPEN_STATUS, priority: "Все", due: "Все", project: "Все", source: "Все" });
           }}
         />
       ) : null}
@@ -488,7 +532,7 @@ function TaskForm({
       </Field>
       <Field label="Важность">
         <select className={inputClass} value={priority} onChange={(event) => setPriority(event.target.value as Priority)}>
-          {PRIORITIES.map((name) => (
+          {TASK_PRIORITIES.filter((name) => name !== "Все").map((name) => (
             <option key={name} value={name}>
               {name}
             </option>
