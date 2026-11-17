@@ -16,4 +16,6 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      # App tests only. scripts/**/*.test.mjs is `npm run test:platform` and
+      # needs the gitignored .grok sandbox, which a GitHub checkout does not have.
       - run: npm test
