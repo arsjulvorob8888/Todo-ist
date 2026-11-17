@@ -190,7 +190,7 @@ function Ready({ children }: { children: ReactNode }) {
 
       {burst > 0 ? <Burst nonce={burst} /> : null}
 
-      <nav className="fixed inset-x-0 bottom-0 z-20 flex gap-1 overflow-x-auto border-t border-line bg-panel px-1 md:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-20 flex w-full max-w-[100vw] gap-1 overflow-x-auto border-t border-line bg-panel px-1 md:hidden">
         {NAV.map((item) => {
           const active = item.shelf ? path.startsWith("/books") && (shelf === "read" ? "read" : "queue") === item.shelf : item.to === "/" ? path === "/" : path.startsWith(item.to);
           const Icon = item.icon;

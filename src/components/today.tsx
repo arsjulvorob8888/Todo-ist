@@ -6,6 +6,7 @@ import { dayKey, fmtHm, fmtSpan, formatDay, nextCelebration } from "@/lib/dates"
 import { quoteForNow } from "@/lib/quotes";
 import { playHabit, playStart, playTap, playWin } from "@/lib/sound";
 import { dayScore, habitDue, habitStreak, levelInfo, spanSeconds, streakCount, usePlanner, type Contact, type Pomo, type Task } from "@/lib/store";
+import { KremlinBadge, isKremlinSource, kremlinCardClass, kremlinCardStyle } from "@/lib/kremlin-mark";
 
 export function Today() {
   const habits = usePlanner((s) => s.habits);
@@ -249,8 +250,14 @@ export function Today() {
             {openTasks.map((task) => {
               const urgent = task.priority === "Срочно";
               const high = task.priority === "Высокий";
+              const kremlin = isKremlinSource(task);
               return (
-              <li key={task.id} className={`flex items-center gap-3 rounded-card border border-line border-l-4 px-3 py-3 ${urgent ? "border-l-ember bg-ember/10" : high ? "border-l-gold bg-panel" : "border-l-line bg-panel"}`}>
+              <li
+                key={task.id}
+                data-source={kremlin ? "kremlin" : "local"}
+                style={kremlinCardStyle(task)}
+                className={`flex items-center gap-3 rounded-card border border-line border-l-4 px-3 py-3 ${kremlin ? kremlinCardClass(task) : urgent ? "border-l-ember bg-ember/10" : high ? "border-l-gold bg-panel" : "border-l-line bg-panel"}`}
+              >
                 <button
                   type="button"
                   aria-label="Выполнить"
@@ -259,7 +266,8 @@ export function Today() {
                 />
                 <div className="min-w-0 flex-1">
                   <p className="flex flex-wrap items-center gap-2">
-                    <span className="truncate">{task.title}</span>
+                    <span className="min-w-0">{task.title}</span>
+                    {kremlin ? KremlinBadge() : null}
                     <span className={`rounded-full px-2 py-0.5 text-[11px] leading-none font-semibold ${urgent ? "bg-ember text-ink" : high ? "border border-gold text-gold" : "bg-panel-2 text-mist"}`}>
                       {task.priority}
                     </span>

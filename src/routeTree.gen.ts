@@ -24,6 +24,7 @@ import { Route as TasksRouteImport } from './routes/tasks'
 import { Route as TimeRouteImport } from './routes/time'
 import { Route as TimingRouteImport } from './routes/timing'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as ApiIntegrationsKremlinRouteImport } from './routes/api/integrations/kremlin'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -100,6 +101,11 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiIntegrationsKremlinRoute = ApiIntegrationsKremlinRouteImport.update({
+  id: '/api/integrations/kremlin',
+  path: '/api/integrations/kremlin',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -117,6 +123,7 @@ export interface FileRoutesByFullPath {
   '/time': typeof TimeRoute
   '/timing': typeof TimingRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/integrations/kremlin': typeof ApiIntegrationsKremlinRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -134,6 +141,7 @@ export interface FileRoutesByTo {
   '/time': typeof TimeRoute
   '/timing': typeof TimingRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/integrations/kremlin': typeof ApiIntegrationsKremlinRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -152,6 +160,7 @@ export interface FileRoutesById {
   '/time': typeof TimeRoute
   '/timing': typeof TimingRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/integrations/kremlin': typeof ApiIntegrationsKremlinRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -171,6 +180,7 @@ export interface FileRouteTypes {
     | '/time'
     | '/timing'
     | '/api/auth/$'
+    | '/api/integrations/kremlin'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -188,6 +198,7 @@ export interface FileRouteTypes {
     | '/time'
     | '/timing'
     | '/api/auth/$'
+    | '/api/integrations/kremlin'
   id:
     | '__root__'
     | '/'
@@ -205,6 +216,7 @@ export interface FileRouteTypes {
     | '/time'
     | '/timing'
     | '/api/auth/$'
+    | '/api/integrations/kremlin'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -223,6 +235,7 @@ export interface RootRouteChildren {
   TimeRoute: typeof TimeRoute
   TimingRoute: typeof TimingRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiIntegrationsKremlinRoute: typeof ApiIntegrationsKremlinRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -332,6 +345,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/integrations/kremlin': {
+      id: '/api/integrations/kremlin'
+      path: '/api/integrations/kremlin'
+      fullPath: '/api/integrations/kremlin'
+      preLoaderRoute: typeof ApiIntegrationsKremlinRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -351,6 +371,7 @@ const rootRouteChildren: RootRouteChildren = {
   TimeRoute: TimeRoute,
   TimingRoute: TimingRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiIntegrationsKremlinRoute: ApiIntegrationsKremlinRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

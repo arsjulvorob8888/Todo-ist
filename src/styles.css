@@ -97,3 +97,19 @@
     scale: 1;
   }
 }
+
+/* Kremlin rows only. The stripe and wash sit on the dark panel; cream text stays put. */
+.kremlin-source {
+  border-left-width: 4px;
+  border-left-color: #e11d2e !important;
+  background-color: rgba(225, 29, 46, 0.14) !important;
+}
+
+.kremlin-badge {
+  background-color: #9f1239;
+  color: #fff7f7;
+}
+
+.kremlin-project {
+  color: #fecdd3;
+}
