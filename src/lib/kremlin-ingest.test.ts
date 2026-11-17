@@ -181,6 +181,75 @@ describe("validation", () => {
     assert.equal(store.records.size, 0);
   });
 
+  it("keeps a usable actionUrl and actionHint and drops anything else", () => {
+    const https = "https://example.com/" + "a".repeat(500 - "https://example.com/".length);
+    assert.equal(https.length, 500);
+    const hint = "я".repeat(200);
+    const accepted = parseKremlinPayload(
+      payload({
+        tasks: [
+          task({
+            actionUrl: `  ${https}  `,
+            actionHint: `  ${hint}  `,
+          }),
+        ],
+      }),
+    );
+    assert.equal(accepted.ok, true);
+    if (accepted.ok) {
+      assert.equal(accepted.value.tasks[0]?.actionUrl, https);
+      assert.equal(accepted.value.tasks[0]?.actionHint, hint);
+    }
+
+    const upper = parseKremlinPayload(
+      payload({ tasks: [task({ actionUrl: "HTTPS://Example.COM/Report" })] }),
+    );
+    assert.equal(upper.ok, true);
+    if (upper.ok) assert.equal(upper.value.tasks[0]?.actionUrl, "HTTPS://Example.COM/Report");
+
+    const bot = parseKremlinPayload(
+      payload({ tasks: [task({ actionUrl: "grokbot://task/42", actionHint: "<b>не html</b>" })] }),
+    );
+    assert.equal(bot.ok, true);
+    if (bot.ok) {
+      assert.equal(bot.value.tasks[0]?.actionUrl, "grokbot://task/42");
+      assert.equal(bot.value.tasks[0]?.actionHint, "<b>не html</b>");
+    }
+
+    const dropped = [
+      "http://example.com/report",
+      "javascript:alert(1)",
+      "data:text/html,hi",
+      "https://",
+      "https:///",
+      "https:example.com",
+      "https://example.com/a b",
+      'https://example.com/"><script>',
+      "grokbot://",
+      https + "b",
+      12,
+      { href: "https://example.com" },
+    ];
+    for (const actionUrl of dropped) {
+      const parsed = parseKremlinPayload(payload({ tasks: [task({ actionUrl, title: "Жива" })] }));
+      assert.equal(parsed.ok, true, `payload stayed valid for ${String(actionUrl)}`);
+      if (parsed.ok) {
+        assert.equal(parsed.value.tasks[0]?.actionUrl, undefined);
+        assert.equal(parsed.value.tasks[0]?.title, "Жива");
+      }
+    }
+
+    const longHint = parseKremlinPayload(payload({ tasks: [task({ actionHint: `${hint}!` })] }));
+    assert.equal(longHint.ok, true);
+    if (longHint.ok) assert.equal(longHint.value.tasks[0]?.actionHint, undefined);
+
+    const badHint = parseKremlinPayload(
+      payload({ tasks: [task({ actionHint: { text: "нет" } })] }),
+    );
+    assert.equal(badHint.ok, true);
+    if (badHint.ok) assert.equal(badHint.value.tasks[0]?.actionHint, undefined);
+  });
+
   it("accepts a goal with no deadline and a null deadline", () => {
     const omitted = parseKremlinPayload(payload({ goals: [goal({ deadline: undefined })] }));
     assert.equal(omitted.ok, true);
@@ -337,6 +406,157 @@ describe("goals", () => {
   });
 });
 
+describe("action fields", () => {
+  it("stores them, replaces them when the payload is newer, and does not delete them when a later payload omits them", () => {
+    const sibling: StoredTask = {
+      ...localTask({
+        id: "kremlin:task-keep",
+        externalId: "task-keep",
+        title: "Оставить",
+        project: "Кремль",
+        source: "kremlin",
+        actionUrl: "https://keep.example/a",
+        actionHint: "не трогать",
+      }),
+    };
+    const created = applyKremlinIngest(
+      { ...emptySlot(), tasks: [localTask(), sibling] },
+      mustParse(
+        payload({
+          goals: [],
+          tasks: [
+            task({ actionUrl: "https://example.com/solve", actionHint: "Сверить в браузере" }),
+          ],
+        }),
+      ),
+    );
+    assert.equal(created.created, 1);
+    const stored = created.slot.tasks.find((item) => item.externalId === "task-1");
+    assert.equal(stored?.actionUrl, "https://example.com/solve");
+    assert.equal(stored?.actionHint, "Сверить в браузере");
+    assert.equal(created.slot.tasks.find((item) => item.id === "local-1")?.title, "Своя задача");
+    assert.equal(
+      created.slot.tasks.find((item) => item.externalId === "task-keep")?.actionUrl,
+      "https://keep.example/a",
+    );
+
+    const replaced = applyKremlinIngest(
+      created.slot,
+      mustParse(
+        payload({
+          sentAt: "2026-11-17T12:00:00.000Z",
+          goals: [],
+          tasks: [task({ actionUrl: "grokbot://task/9", actionHint: "В боте" })],
+        }),
+      ),
+    );
+    assert.equal(replaced.updated, 1);
+    assert.equal(
+      replaced.slot.tasks.find((item) => item.externalId === "task-1")?.actionUrl,
+      "grokbot://task/9",
+    );
+    assert.equal(
+      replaced.slot.tasks.find((item) => item.externalId === "task-1")?.actionHint,
+      "В боте",
+    );
+    assert.equal(
+      replaced.slot.tasks.find((item) => item.externalId === "task-keep")?.actionHint,
+      "не трогать",
+    );
+
+    const kept = applyKremlinIngest(
+      replaced.slot,
+      mustParse(
+        payload({
+          sentAt: "2026-11-17T13:00:00.000Z",
+          goals: [],
+          tasks: [task({ title: "Новый заголовок" })],
+        }),
+      ),
+    );
+    assert.equal(kept.slot.tasks.filter((item) => item.externalId === "task-1").length, 1);
+    const afterOmit = kept.slot.tasks.find((item) => item.externalId === "task-1");
+    assert.equal(afterOmit?.title, "Новый заголовок");
+    assert.equal(afterOmit?.actionUrl, "grokbot://task/9");
+    assert.equal(afterOmit?.actionHint, "В боте");
+    assert.equal(kept.slot.tasks.find((item) => item.id === "local-1")?.title, "Своя задача");
+
+    const stale = applyKremlinIngest(
+      kept.slot,
+      mustParse(
+        payload({
+          sentAt: "2026-11-17T11:00:00.000Z",
+          goals: [],
+          tasks: [
+            task({
+              actionUrl: "https://stale.example/x",
+              title: "Старое",
+              actionHint: "старая подсказка",
+            }),
+          ],
+        }),
+      ),
+    );
+    assert.equal(stale.unchanged, 1);
+    assert.equal(
+      stale.writes.some((write) => write.collection === "tasks" && write.id === afterOmit?.id),
+      false,
+    );
+    assert.equal(
+      stale.slot.tasks.find((item) => item.externalId === "task-1")?.title,
+      "Новый заголовок",
+    );
+    assert.equal(
+      stale.slot.tasks.find((item) => item.externalId === "task-1")?.actionUrl,
+      "grokbot://task/9",
+    );
+  });
+
+  it("drops an invalid actionUrl instead of replacing a stored one", () => {
+    const created = applyKremlinIngest(
+      emptySlot(),
+      mustParse(
+        payload({
+          goals: [],
+          tasks: [task({ actionUrl: "https://example.com/solve", actionHint: "ок" })],
+        }),
+      ),
+    );
+    const next = applyKremlinIngest(
+      created.slot,
+      mustParse(
+        payload({
+          sentAt: "2026-11-17T12:00:00.000Z",
+          goals: [],
+          tasks: [task({ actionUrl: "javascript:alert(1)", actionHint: "я".repeat(201) })],
+        }),
+      ),
+    );
+    assert.equal(next.unchanged, 1);
+    assert.equal(next.slot.tasks[0]?.actionUrl, "https://example.com/solve");
+    assert.equal(next.slot.tasks[0]?.actionHint, "ок");
+    assert.equal(next.slot.tasks.length, 1);
+  });
+
+  it("writes the action fields through the ingest handler", async () => {
+    const store = memoryDeps();
+    const response = await handleKremlinIngest(
+      request(
+        payload({
+          goals: [],
+          tasks: [task({ actionUrl: "https://example.com/solve", actionHint: "Сверить" })],
+        }),
+      ),
+      store.deps,
+    );
+    assert.equal(response.status, 200);
+    const loaded = await store.deps.loadSlot(OWNER_ID);
+    assert.equal(loaded.tasks[0]?.actionUrl, "https://example.com/solve");
+    assert.equal(loaded.tasks[0]?.actionHint, "Сверить");
+    assert.equal(loaded.tasks[0]?.source, "kremlin");
+  });
+});
+
 describe("client merge", () => {
   it("merges Kremlin rows into poryadok-v1 by id and externalId without dropping client items", () => {
     const client = {
@@ -400,6 +620,58 @@ describe("client merge", () => {
     assert.equal(newerServer.tasks.length, 1);
     assert.equal(newerServer.tasks[0]?.title, "С сервера");
     assert.ok(newerServer.projects.includes("Дом"));
+  });
+
+  it("carries actionUrl with the newer stamp and does not drop the other side's tasks", () => {
+    const phone = {
+      id: "phone-copy",
+      externalId: "task-1",
+      title: "С телефона",
+      project: "Кремль",
+      actionUrl: "https://phone.example/a",
+      actionHint: "телефон",
+      updatedAt: 50,
+    };
+    const server = {
+      id: "kremlin:task-1",
+      externalId: "task-1",
+      title: "С сервера",
+      project: "Кремль",
+      actionUrl: "grokbot://task/9",
+      actionHint: "бот",
+      updatedAt: 100,
+    };
+    const onlyLocal = {
+      id: "local-1",
+      externalId: undefined,
+      title: "Своя задача",
+      project: "Дом",
+      actionUrl: "https://local.example/x",
+      actionHint: undefined,
+      updatedAt: 10,
+    };
+    const newerServer = mergePoryadokState(
+      { tasks: [phone, onlyLocal], goals: [], boards: [], projects: ["Дом"] },
+      { tasks: [server], goals: [], boards: [], projects: ["Кремль"] },
+    );
+    assert.equal(newerServer.tasks.length, 2);
+    const merged = newerServer.tasks.find((item) => item.externalId === "task-1");
+    assert.equal(merged?.title, "С сервера");
+    assert.equal(merged?.actionUrl, "grokbot://task/9");
+    assert.equal(merged?.actionHint, "бот");
+    assert.equal(
+      newerServer.tasks.find((item) => item.id === "local-1")?.actionUrl,
+      "https://local.example/x",
+    );
+
+    const newerPhone = mergePoryadokState(
+      { tasks: [{ ...phone, updatedAt: 200 }], goals: [], boards: [], projects: ["Дом"] },
+      { tasks: [server], goals: [], boards: [], projects: ["Кремль"] },
+    );
+    assert.equal(newerPhone.tasks.length, 1);
+    assert.equal(newerPhone.tasks[0]?.title, "С телефона");
+    assert.equal(newerPhone.tasks[0]?.actionUrl, "https://phone.example/a");
+    assert.equal(newerPhone.tasks[0]?.actionHint, "телефон");
   });
 });
 

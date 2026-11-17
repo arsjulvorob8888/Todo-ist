@@ -26,6 +26,8 @@ export type Task = {
   category?: string;
   externalId?: string;
   source?: "kremlin";
+  actionUrl?: string;
+  actionHint?: string;
   updatedAt?: number;
 };
 

@@ -6,7 +6,7 @@ import { dayKey, fmtHm, fmtSpan, formatDay, nextCelebration } from "@/lib/dates"
 import { quoteForNow } from "@/lib/quotes";
 import { playHabit, playStart, playTap, playWin } from "@/lib/sound";
 import { dayScore, habitDue, habitStreak, levelInfo, spanSeconds, streakCount, usePlanner, type Contact, type Pomo, type Task } from "@/lib/store";
-import { KremlinBadge, isKremlinSource, kremlinCardClass, kremlinCardStyle } from "@/lib/kremlin-mark";
+import { KremlinAction, KremlinBadge, isKremlinSource, kremlinCardClass, kremlinCardStyle } from "@/lib/kremlin-mark";
 
 export function Today() {
   const habits = usePlanner((s) => s.habits);
@@ -277,6 +277,7 @@ export function Today() {
                     {" · "}
                     дедлайн {task.deadline ? new Date(task.deadline + "T00:00:00").toLocaleDateString("ru-RU", { day: "numeric", month: "short" }) : "не задан"}
                   </p>
+                  <KremlinAction source={task.source} actionUrl={task.actionUrl} actionHint={task.actionHint} className="mt-2" />
                 </div>
                 <button
                   type="button"
