@@ -2,9 +2,11 @@
 /**
  * Deploy-time database migrator (node-postgres, `pg`).
  *
- * Runs during `npm run build` — on every Vercel deploy — applying pending files
- * in ../migrations to DATABASE_URL. Each file is applied in one transaction and
- * recorded in a `_migrations` table, so it runs once and is safe to re-run.
+ * Runs during `npm run build` — on every deploy — applying pending files
+ * in ../migrations. Uses DATABASE_URL_UNPOOLED when it is set (direct host,
+ * the right target for DDL) and otherwise DATABASE_URL. Each file is applied
+ * in one transaction and recorded in `_migrations`, so a re-run is a no-op.
+ * The SQL itself is `IF NOT EXISTS`, so a file that is applied again is safe.
  *
  * The read is non-recursive, so the opt-in auth schema under migrations/auth/
  * is not applied to an app that never asked for sign-in.
@@ -15,10 +17,11 @@
 import { readdir, readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import pg from "pg";
 import { pendingMigrations } from "./migration-plan.mjs";
+import { connectWithRetry, createNeonPool, migrationDatabaseUrl } from "./neon-connection.mjs";
+import { redact } from "./db-copy-plan.mjs";
 
-const databaseUrl = process.env.DATABASE_URL;
+const databaseUrl = migrationDatabaseUrl();
 if (!databaseUrl) {
   console.log(
     "[migrate] DATABASE_URL not set — skipping (the PGLite fallback migrates itself).",
@@ -42,8 +45,8 @@ async function main() {
     return;
   }
 
-  const pool = new pg.Pool({ connectionString: databaseUrl, max: 1 });
-  const client = await pool.connect();
+  const pool = createNeonPool(databaseUrl, { max: 1, applicationName: "poryadok-migrate" });
+  const client = await connectWithRetry(pool);
   try {
     await client.query(
       "CREATE TABLE IF NOT EXISTS _migrations (name TEXT PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT now())",
@@ -59,7 +62,10 @@ async function main() {
         await client.query("BEGIN");
         // pg's simple-query protocol runs a whole multi-statement file at once.
         await client.query(text);
-        await client.query("INSERT INTO _migrations (name) VALUES ($1)", [name]);
+        await client.query(
+          "INSERT INTO _migrations (name) VALUES ($1) ON CONFLICT (name) DO NOTHING",
+          [name],
+        );
         await client.query("COMMIT");
       } catch (err) {
         console.error(`[migrate] error applying ${name}`);
@@ -81,7 +87,7 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error("[migrate] failed:", err?.message || err);
+  console.error("[migrate] failed:", redact(err?.message || err, [databaseUrl]));
   // pg errors carry the context needed to debug a bad SQL file.
   for (const key of ["code", "detail", "hint", "position", "where"]) {
     if (err?.[key] != null) console.error(`[migrate]   ${key}: ${err[key]}`);
