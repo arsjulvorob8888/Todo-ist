@@ -116,6 +116,28 @@ export function TasksView() {
           Новая
         </button>
       </header>
+      {visible.length === 0 ? (
+        sessionReady && showSignInTasksPrompt({ authEnabled, pending: isPending, signedIn }, tasks.length) ? (
+          <p className="mb-4 text-mist" data-testid="tasks-empty">
+            <Link to="/account" className="underline decoration-gold/40 underline-offset-4">
+              {SIGN_IN_TASKS_MESSAGE}
+            </Link>
+          </p>
+        ) : (
+          <p className="mb-4 text-mist" data-testid="tasks-empty">
+            {tasks.length === 0 ? "Нет задач в этом фильтре." : "В этом фильтре пусто."}
+            {tasks.length > 0 ? (
+              <button
+                type="button"
+                className="ml-3 rounded-full bg-gold px-3 py-1 text-ink"
+                onClick={resetFilters}
+              >
+                Показать все ({tasks.length})
+              </button>
+            ) : null}
+          </p>
+        )
+      ) : null}
       <div className="mb-4 flex flex-wrap gap-2">
         {TASK_STATUSES.map((name) => (
           <button
@@ -172,8 +194,8 @@ export function TasksView() {
           Метка
         </button>
       </div>
-      <div className="mb-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-        <label className="text-xs tracking-wide text-mist uppercase">
+      <div className="mb-3 grid grid-cols-2 gap-2 xl:grid-cols-4" data-testid="task-filter-grid">
+        <label className="min-w-0 text-xs tracking-wide text-mist uppercase">
           Важность
           <select className={inputClass + " mt-1"} value={priority} onChange={(event) => patchFilters({ priority: event.target.value })}>
             {TASK_PRIORITIES.map((name) => (
@@ -181,7 +203,7 @@ export function TasksView() {
             ))}
           </select>
         </label>
-        <label className="text-xs tracking-wide text-mist uppercase">
+        <label className="min-w-0 text-xs tracking-wide text-mist uppercase">
           Статус
           <select className={inputClass + " mt-1"} value={filter} onChange={(event) => patchFilters({ status: event.target.value })}>
             {TASK_STATUSES.map((name) => (
@@ -189,7 +211,7 @@ export function TasksView() {
             ))}
           </select>
         </label>
-        <label className="text-xs tracking-wide text-mist uppercase">
+        <label className="min-w-0 text-xs tracking-wide text-mist uppercase">
           Дедлайн
           <select className={inputClass + " mt-1"} value={due} onChange={(event) => patchFilters({ due: event.target.value })}>
             {TASK_DUES.map((name) => (
@@ -197,7 +219,7 @@ export function TasksView() {
             ))}
           </select>
         </label>
-        <label className="text-xs tracking-wide text-mist uppercase">
+        <label className="min-w-0 text-xs tracking-wide text-mist uppercase">
           Источник
           <select
             className={inputClass + " mt-1"}
@@ -256,28 +278,6 @@ export function TasksView() {
           />
         ))}
       </ul>
-      {visible.length === 0 ? (
-        sessionReady && showSignInTasksPrompt({ authEnabled, pending: isPending, signedIn }, tasks.length) ? (
-          <p className="mt-6 text-mist">
-            <Link to="/account" className="underline decoration-gold/40 underline-offset-4">
-              {SIGN_IN_TASKS_MESSAGE}
-            </Link>
-          </p>
-        ) : (
-          <p className="mt-6 text-mist">
-            {tasks.length === 0 ? "Нет задач в этом фильтре." : "В этом фильтре пусто."}
-            {tasks.length > 0 ? (
-              <button
-                type="button"
-                className="ml-3 rounded-full bg-gold px-3 py-1 text-ink"
-                onClick={resetFilters}
-              >
-                Показать все ({tasks.length})
-              </button>
-            ) : null}
-          </p>
-        )
-      ) : null}
       {open ? (
         <TaskForm
           projects={projects}

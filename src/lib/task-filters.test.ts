@@ -80,4 +80,20 @@ describe("task source filter", () => {
     assert.match(source, /KremlinBadge/);
     assert.match(source, /Войдите, чтобы увидеть свои задачи|SIGN_IN_TASKS_MESSAGE/);
   });
+
+  it("keeps the source filter and the sign-in line above the phone navigation", () => {
+    const tasks = readFileSync(new URL("../components/tasks-view.tsx", import.meta.url), "utf8");
+    const shell = readFileSync(new URL("../components/shell.tsx", import.meta.url), "utf8");
+    const css = readFileSync(new URL("../styles.css", import.meta.url), "utf8");
+    const grid = tasks.slice(tasks.indexOf('data-testid="task-filter-grid"') - 80, tasks.indexOf('data-testid="task-filter-grid"'));
+    assert.match(grid, /grid-cols-2/);
+    assert.equal(grid.includes("sm:grid-cols-2"), false);
+    const messageAt = tasks.indexOf('data-testid="tasks-empty"');
+    const sourceAt = tasks.indexOf('data-testid="task-source-filter"');
+    assert.ok(messageAt > 0 && sourceAt > messageAt);
+    assert.match(shell, /app-scroll-pad/);
+    assert.match(shell, /mobile-nav/);
+    assert.match(css, /padding-bottom:\s*calc\(4rem\s*\+\s*env\(safe-area-inset-bottom,\s*0px\)\)/);
+    assert.match(css, /\.mobile-nav\s*\{[^}]*padding-bottom:\s*env\(safe-area-inset-bottom,\s*0px\)/);
+  });
 });

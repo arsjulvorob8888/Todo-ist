@@ -35,6 +35,21 @@
     color: var(--color-cream);
   }
 
+  /* Mobile tab bar is 3.5rem. Keep page content above it and the home indicator. */
+  .app-scroll-pad {
+    padding-bottom: calc(4rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .mobile-nav {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  @media (min-width: 768px) {
+    .app-scroll-pad {
+      padding-bottom: 3rem;
+    }
+  }
+
   input[type="date"],
   input[type="time"] {
     color-scheme: dark;
