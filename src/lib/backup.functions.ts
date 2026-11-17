@@ -1,5 +1,3 @@
-import { mkdir, writeFile } from "node:fs/promises";
-import { join } from "node:path";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { authMiddleware } from "@/lib/auth/middleware";
@@ -9,7 +7,8 @@ function safeId(id: string) {
   return id.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 80) || "user";
 }
 
-export function backupFolderFor(userId: string) {
+export async function backupFolderFor(userId: string) {
+  const { join } = await import("node:path");
   return join(process.cwd(), "data", "backups", safeId(userId));
 }
 
@@ -22,7 +21,7 @@ const bodySchema = z.object({
 export const backupLocation = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
-    const folder = backupFolderFor(context.userId);
+    const folder = await backupFolderFor(context.userId);
     return { folder, userId: context.userId };
   });
 
@@ -30,7 +29,9 @@ export const saveBackup = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .inputValidator(bodySchema)
   .handler(async ({ data, context }) => {
-    const folder = backupFolderFor(context.userId);
+    const { mkdir, writeFile } = await import("node:fs/promises");
+    const { join } = await import("node:path");
+    const folder = await backupFolderFor(context.userId);
     const path = join(folder, data.name);
     await mkdir(folder, { recursive: true });
     await writeFile(path, data.payload);

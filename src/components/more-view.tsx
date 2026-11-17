@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Field, inputClass, Modal } from "@/components/modal";
 import { dayKey, monthDayLabel, nextCelebration, parseCelebration } from "@/lib/dates";
 import { usePlanner, type Book, type BookKind, type BookStatus, type Priority } from "@/lib/store";
+import { KremlinBadge, kremlinProjectClass } from "@/lib/kremlin-mark";
 
 const TITLES = {
   time: "Время",
@@ -15,6 +16,7 @@ const TITLES = {
 export function TimeCategories() {
   const timeCats = usePlanner((s) => s.timeCats);
   const projects = usePlanner((s) => s.projects);
+  const boards = usePlanner((s) => s.boards);
   const catProject = usePlanner((s) => s.catProject ?? {});
   const addCategory = usePlanner((s) => s.addCategory);
   const renameCategory = usePlanner((s) => s.renameCategory);
@@ -36,7 +38,9 @@ export function TimeCategories() {
         <select className={inputClass} value={project} onChange={(event) => setProject(event.target.value)}>
           <option value="">Выбери проект</option>
           {projects.map((item) => (
-            <option key={item}>{item}</option>
+            <option key={item} className={kremlinProjectClass(item, boards)}>
+              {item}
+            </option>
           ))}
         </select>
       </Field>
@@ -56,7 +60,7 @@ export function TimeCategories() {
           <li key={item} className="flex items-center justify-between gap-3 rounded-2xl border border-line bg-panel px-3 py-3">
             <span>
               {item}
-              <span className={`mt-0.5 block text-xs ${catProject[item] ? "text-mist" : "text-ember"}`}>
+              <span className={`mt-0.5 block text-xs ${kremlinProjectClass(catProject[item] ?? "", boards) || (catProject[item] ? "text-mist" : "text-ember")}`}>
                 {catProject[item] ? `Проект: ${catProject[item]}` : "Проект не назначен"}
               </span>
             </span>
@@ -96,7 +100,9 @@ export function TimeCategories() {
           <Field label="Проект">
             <select className={inputClass} value={nextProject} onChange={(event) => setNextProject(event.target.value)}>
               {projects.map((item) => (
-                <option key={item}>{item}</option>
+                <option key={item} className={kremlinProjectClass(item, boards)}>
+                  {item}
+                </option>
               ))}
             </select>
           </Field>
@@ -119,6 +125,7 @@ export function TimeCategories() {
 
 export function LibraryView({ section, shelf = "lists" }: { section: keyof typeof TITLES; shelf?: "lists" | "queue" | "read" }) {
   const projects = usePlanner((s) => s.projects);
+  const boards = usePlanner((s) => s.boards);
   const timeCats = usePlanner((s) => s.timeCats);
   const catProject = usePlanner((s) => s.catProject ?? {});
   const addCategory = usePlanner((s) => s.addCategory);
@@ -154,6 +161,7 @@ export function LibraryView({ section, shelf = "lists" }: { section: keyof typeo
         <Cats
           kind="project"
           names={projects}
+          boards={boards}
           notes={Object.fromEntries(
             projects.map((project) => [project, timeCats.filter((name) => (catProject[name] || "Прочее") === project).join(", ")]),
           )}
@@ -194,6 +202,7 @@ function Cats({
   kind,
   names,
   notes,
+  boards = [],
   onAdd,
   onRename,
   onDelete,
@@ -201,6 +210,7 @@ function Cats({
   kind: "time" | "project";
   names: string[];
   notes?: Record<string, string>;
+  boards?: { name: string; source?: string }[];
   onAdd: (kind: "time" | "project", name: string) => void;
   onRename: (kind: "time" | "project", from: string, to: string) => void;
   onDelete: (kind: "time" | "project", name: string) => void;
@@ -224,11 +234,22 @@ function Cats({
         </button>
       </div>
       <ul className="space-y-2">
-        {names.map((item) => (
-          <li key={item} className="flex items-center justify-between rounded-2xl border border-line bg-panel px-3 py-3">
-            <span>
-              {item}
-              {notes?.[item] ? <span className="mt-0.5 block text-xs text-mist">{notes[item]}</span> : null}
+        {names.map((item) => {
+          const marked = kind === "project" && kremlinProjectClass(item, boards);
+          return (
+          <li
+            key={item}
+            data-source={marked ? "kremlin" : "local"}
+            className={
+              marked
+                ? "kremlin-source flex items-center justify-between gap-3 rounded-2xl border border-line border-l-4 px-3 py-3"
+                : "flex items-center justify-between rounded-2xl border border-line bg-panel px-3 py-3"
+            }
+          >
+            <span className={marked ? "flex min-w-0 flex-wrap items-center gap-2 kremlin-project" : "min-w-0"}>
+              <span className="min-w-0">{item}</span>
+              {marked ? KremlinBadge() : null}
+              {notes?.[item] ? <span className="mt-0.5 block w-full text-xs text-mist">{notes[item]}</span> : null}
             </span>
             <span className="flex gap-3 text-sm">
               <button
@@ -246,7 +267,8 @@ function Cats({
               </button>
             </span>
           </li>
-        ))}
+          );
+        })}
       </ul>
       {edit ? (
         <Modal title="Категория" onClose={() => setEdit(null)}>

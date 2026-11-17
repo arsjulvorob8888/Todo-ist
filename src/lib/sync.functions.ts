@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { getSql } from "@/lib/db";
+import { KREMLIN_PROJECT, withKremlinProjectName } from "@/lib/kremlin-merge";
 
 const COLLECTIONS = new Set(["tasks", "spans", "goals", "contacts", "ideas", "books", "boards", "labels", "habits", "personNotes", "meta"]);
 
@@ -20,6 +21,27 @@ const bodySchema = z.object({
 
 export type SyncChange = z.infer<typeof changeSchema>;
 
+async function payloadForChange(
+  sql: Awaited<ReturnType<typeof getSql>>,
+  userId: string,
+  change: { collection: string; id: string; deleted: boolean; payload: unknown },
+): Promise<unknown> {
+  if (change.deleted || change.collection !== "meta" || change.id !== "profile") return change.payload ?? {};
+  const rows = await sql<{ payload: string }>`
+    select payload from sync_records
+    where user_id = ${userId} and collection = 'boards' and deleted = false
+  `;
+  const keep = rows.some((row) => {
+    try {
+      const board = JSON.parse(row.payload) as { name?: string; source?: string };
+      return board.source === "kremlin" || board.name === KREMLIN_PROJECT;
+    } catch {
+      return false;
+    }
+  });
+  return withKremlinProjectName(change.payload ?? {}, keep);
+}
+
 export const pushPull = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .inputValidator(bodySchema)
@@ -28,7 +50,7 @@ export const pushPull = createServerFn({ method: "POST" })
     const userId = context.userId;
     for (const change of data.changes) {
       if (!COLLECTIONS.has(change.collection)) continue;
-      const payload = JSON.stringify(change.payload ?? {});
+      const payload = JSON.stringify(await payloadForChange(sql, userId, change));
       await sql`
         insert into sync_records (user_id, collection, record_id, payload, updated_at, deleted)
         values (${userId}, ${change.collection}, ${change.id}, ${payload}, ${change.updatedAt}, ${change.deleted})

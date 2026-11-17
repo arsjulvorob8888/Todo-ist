@@ -3,7 +3,7 @@ import { persist } from "zustand/middleware";
 import { useEffect, useState } from "react";
 import { addDays, dayKey, endOfDayMs } from "@/lib/dates";
 
-export type Board = { id: string; name: string; color: string; inbox: boolean };
+export type Board = { id: string; name: string; color: string; inbox: boolean; source?: "kremlin"; updatedAt?: number };
 export type Mark = { id: string; name: string; color: string };
 export type Priority = "Низкий" | "Средний" | "Высокий" | "Срочно";
 export type Status = "В ожидании" | "В процессе" | "Выполнено";
@@ -24,6 +24,9 @@ export type Task = {
   labelIds?: string[];
   order?: number;
   category?: string;
+  externalId?: string;
+  source?: "kremlin";
+  updatedAt?: number;
 };
 
 export type Span = {
@@ -53,7 +56,7 @@ export type RoutineBlock = {
   end: string;
 };
 
-export type Kpi = { id: string; name: string; target: number; current: number; unit: string };
+export type Kpi = { id: string; name: string; target: number | null; current: number; unit: string };
 export type Goal = {
   id: string;
   title: string;
@@ -62,6 +65,9 @@ export type Goal = {
   done?: boolean;
   percent?: number;
   kpis?: Kpi[];
+  externalId?: string;
+  source?: "kremlin";
+  updatedAt?: number;
 };
 export type Contact = { id: string; name: string; group: string; birthday: string; kind?: "birthday" | "holiday" };
 export type PersonNote = { id: string; contactId: string; text: string; created: string };
@@ -349,12 +355,14 @@ export const usePlanner = create<State>()(
               project: board?.name ?? task.project,
               category: task.category || ((board?.name ?? task.project) === "Привычки" ? "Привычки" : ""),
               ...(orders.length ? { order: Math.min(...orders) - 1 } : {}),
+              updatedAt: Date.now(),
             },
             ...get().tasks,
           ],
         });
       },
-      updateTask: (id, patch) => set({ tasks: get().tasks.map((t) => (t.id === id ? { ...t, ...patch } : t)) }),
+      updateTask: (id, patch) =>
+        set({ tasks: get().tasks.map((t) => (t.id === id ? { ...t, ...patch, updatedAt: Date.now() } : t)) }),
       placeTask: (id, targetId, after) => {
         const list = [...get().tasks].sort(compareTasks);
         const from = list.findIndex((task) => task.id === id);
@@ -364,7 +372,13 @@ export const usePlanner = create<State>()(
         if (to < 0 || !item) return;
         if (after) to += 1;
         list.splice(to, 0, item);
-        set({ tasks: list.map((task, index) => ({ ...task, order: index })) });
+        set({
+          tasks: list.map((task, index) => ({
+            ...task,
+            order: index,
+            ...(task.id === id ? { updatedAt: Date.now() } : {}),
+          })),
+        });
       },
       completeTask: (id) => {
         const task = get().tasks.find((t) => t.id === id);
@@ -374,7 +388,9 @@ export const usePlanner = create<State>()(
             undo: null,
             xp: Math.max(0, get().xp - 15),
             tasks: get().tasks.map((t) =>
-              t.id === id ? { ...t, status: t.beforeStatus || "В ожидании", completed: "", beforeStatus: undefined } : t,
+              t.id === id
+                ? { ...t, status: t.beforeStatus || "В ожидании", completed: "", beforeStatus: undefined, updatedAt: Date.now() }
+                : t,
             ),
           });
           return;
@@ -382,7 +398,9 @@ export const usePlanner = create<State>()(
         const gained = award(get().xp, 15, "Задача закрыта");
         set({
           tasks: get().tasks.map((t) =>
-            t.id === id ? { ...t, status: "Выполнено", beforeStatus: t.status, completed: new Date().toISOString() } : t,
+            t.id === id
+              ? { ...t, status: "Выполнено", beforeStatus: t.status, completed: new Date().toISOString(), updatedAt: Date.now() }
+              : t,
           ),
           undo: { id, title: task.title, at: Date.now() },
           ...gained,
@@ -461,12 +479,16 @@ export const usePlanner = create<State>()(
               done: false,
               percent: goal.percent ?? 0,
               kpis: goal.kpis ?? [],
+              updatedAt: Date.now(),
             },
           ],
         }),
-      updateGoal: (id, patch) => set({ goals: get().goals.map((goal) => (goal.id === id ? { ...goal, ...patch } : goal)) }),
+      updateGoal: (id, patch) =>
+        set({ goals: get().goals.map((goal) => (goal.id === id ? { ...goal, ...patch, updatedAt: Date.now() } : goal)) }),
       toggleGoal: (id) =>
-        set({ goals: get().goals.map((goal) => (goal.id === id ? { ...goal, done: !goal.done } : goal)) }),
+        set({
+          goals: get().goals.map((goal) => (goal.id === id ? { ...goal, done: !goal.done, updatedAt: Date.now() } : goal)),
+        }),
       deleteGoal: (id) => set({ goals: get().goals.filter((g) => g.id !== id) }),
       renameCategory: (kind, from, to) => {
         const clean = to.trim();

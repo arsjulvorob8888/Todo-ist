@@ -1,6 +1,13 @@
 import { useSyncExternalStore } from "react";
 import { pushPull, type SyncChange } from "@/lib/sync.functions";
-import { usePlanner, withGuessedCategory, type Task } from "@/lib/store";
+import { usePlanner, withGuessedCategory, type Board, type Task } from "@/lib/store";
+import {
+  findSyncIndex,
+  incomingWins,
+  KREMLIN_PROJECT,
+  projectsIncludingKremlin,
+  collapseKremlinBoards,
+} from "@/lib/kremlin-merge";
 
 const LISTS = ["tasks", "spans", "goals", "contacts", "ideas", "books", "boards", "labels", "habits", "personNotes"] as const;
 const SENT_KEY = "poryadok-sync-sent";
@@ -110,6 +117,14 @@ function waitHydrated() {
   });
 }
 
+function changeTime(payload: unknown, now: number): number {
+  if (!payload || typeof payload !== "object") return now;
+  const row = payload as { updatedAt?: unknown; externalId?: unknown; source?: unknown };
+  const kremlin = row.source === "kremlin" || typeof row.externalId === "string";
+  if (!kremlin) return now;
+  return typeof row.updatedAt === "number" && Number.isFinite(row.updatedAt) ? row.updatedAt : 0;
+}
+
 function changesSince(sent: Sent, state: ReturnType<typeof usePlanner.getState>): SyncChange[] {
   const now = Date.now();
   const current = snapshot(state);
@@ -117,7 +132,13 @@ function changesSince(sent: Sent, state: ReturnType<typeof usePlanner.getState>)
   for (const [key, row] of current) {
     const json = JSON.stringify(row.payload);
     if (sent[key] !== json) {
-      changes.push({ collection: row.collection, id: row.id, updatedAt: now, deleted: false, payload: row.payload });
+      changes.push({
+        collection: row.collection,
+        id: row.id,
+        updatedAt: changeTime(row.payload, now),
+        deleted: false,
+        payload: row.payload,
+      });
       sent[key] = json;
     }
   }
@@ -171,28 +192,51 @@ function applyRecords(records: SyncChange[]) {
       if (!LISTS.includes(record.collection as (typeof LISTS)[number])) continue;
       const collection = record.collection as (typeof LISTS)[number];
       const list = lists[collection];
-      const index = list.findIndex((item) => item.id === record.id);
+      const rawPayload = (record.payload ?? {}) as { id?: string; externalId?: string; updatedAt?: number; name?: string };
+      const updatedAt =
+        typeof rawPayload.updatedAt === "number" && Number.isFinite(rawPayload.updatedAt) ? rawPayload.updatedAt : record.updatedAt;
+      const incoming = { ...rawPayload, id: record.id, updatedAt };
+      const index = findSyncIndex(collection, list, incoming);
       if (record.deleted) {
-        if (index >= 0) list.splice(index, 1);
-        sent[key] = "deleted";
-      } else {
-        const raw = JSON.stringify(record.payload);
-        let payload = record.payload as { id: string };
-        if (collection === "tasks") {
-          const cats = next.timeCats?.length ? next.timeCats : usePlanner.getState().timeCats;
-          const stamped = withGuessedCategory(payload as Task, cats);
-          if (stamped !== payload) {
-            if (index >= 0) list[index] = stamped;
-            else list.unshift(stamped);
-            sent[key] = raw;
-            continue;
-          }
+        if (index >= 0 && incomingWins(list[index] as { updatedAt?: number }, updatedAt)) {
+          list.splice(index, 1);
+          sent[key] = "deleted";
+        } else if (index >= 0) {
+          sent[key] = JSON.stringify(list[index]);
+        } else {
+          sent[key] = "deleted";
         }
-        if (index >= 0) list[index] = payload;
-        else list.unshift(payload);
-        sent[key] = raw;
+        continue;
       }
+      let stored: { id: string } = incoming;
+      if (collection === "tasks") {
+        const cats = next.timeCats?.length ? next.timeCats : usePlanner.getState().timeCats;
+        const guessed = withGuessedCategory(incoming as Task, cats);
+        stored = guessed;
+        if (index < 0) list.unshift(stored);
+        else if (incomingWins(list[index] as { updatedAt?: number }, updatedAt)) list[index] = stored;
+        else {
+          sent[key] = JSON.stringify(list[index]);
+          continue;
+        }
+        sent[key] = guessed !== incoming ? JSON.stringify(record.payload) : JSON.stringify(stored);
+        continue;
+      }
+      if (index < 0) list.unshift(stored);
+      else if (incomingWins(list[index] as { updatedAt?: number }, updatedAt)) list[index] = stored;
+      else {
+        sent[key] = JSON.stringify(list[index]);
+        continue;
+      }
+      sent[key] = JSON.stringify(stored);
     }
+    const collapsed = collapseKremlinBoards(lists.boards as Board[], lists.tasks as Task[]);
+    lists.boards = collapsed.boards;
+    lists.tasks = collapsed.tasks;
+    const kremlin =
+      collapsed.boards.some((board) => board.source === "kremlin" || board.name === KREMLIN_PROJECT) ||
+      collapsed.tasks.some((task) => task.source === "kremlin" || task.project === KREMLIN_PROJECT);
+    if (kremlin) next.projects = projectsIncludingKremlin(next.projects ?? [], true);
     saveSent(sent);
     return { ...next, ...lists } as Partial<ReturnType<typeof usePlanner.getState>>;
   });

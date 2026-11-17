@@ -3,6 +3,7 @@ import { Field, inputClass, Modal } from "@/components/modal";
 import { dayKey } from "@/lib/dates";
 import { playTap } from "@/lib/sound";
 import { usePlanner, type Goal, type Kpi } from "@/lib/store";
+import { KremlinBadge, isKremlinSource, kremlinCardClass, kremlinCardStyle } from "@/lib/kremlin-mark";
 
 const uid = () => crypto.randomUUID();
 
@@ -47,8 +48,14 @@ export function GoalsView() {
           {goals.map((goal) => {
             const percent = goalPercent(goal);
             const left = goal.deadline ? deadlineLeft(goal.deadline, now) : null;
+            const kremlin = isKremlinSource(goal);
             return (
-              <li key={goal.id} className="rounded-card border border-line bg-panel p-4">
+              <li
+                key={goal.id}
+                data-source={kremlin ? "kremlin" : "local"}
+                style={kremlinCardStyle(goal)}
+                className={`rounded-card border p-4 ${kremlin ? `border-l-4 ${kremlinCardClass(goal)}` : "border-line bg-panel"}`}
+              >
                 <div className="flex items-start gap-3">
                   <button
                     type="button"
@@ -64,7 +71,10 @@ export function GoalsView() {
                   </button>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-start justify-between gap-3">
-                      <h3 className={`font-display text-xl ${goal.done ? "text-mist line-through" : ""}`}>{goal.title}</h3>
+                      <h3 className={`flex min-w-0 flex-wrap items-center gap-2 font-display text-xl ${goal.done ? "text-mist line-through" : ""}`}>
+                        <span className="min-w-0">{goal.title}</span>
+                        {kremlin ? KremlinBadge() : null}
+                      </h3>
                       <span className="font-display text-3xl text-gold">{percent}%</span>
                     </div>
                     {goal.deadline ? (
@@ -191,7 +201,7 @@ function GoalForm({
               className={inputClass}
               inputMode="decimal"
               placeholder="План"
-              value={String(kpi.target)}
+              value={kpi.target == null ? "" : String(kpi.target)}
               onChange={(event) => patchKpi(kpi.id, { target: Number(event.target.value.replace(",", ".")) || 0 })}
             />
             <button type="button" className="text-left text-sm text-ember" onClick={() => setKpis((list) => list.filter((item) => item.id !== kpi.id))}>

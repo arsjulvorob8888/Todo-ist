@@ -4,6 +4,7 @@ import { Field, inputClass, Modal } from "@/components/modal";
 import { addDays, dayKey } from "@/lib/dates";
 import { playStart, playTap } from "@/lib/sound";
 import { compareTasks, usePlanner, type Board, type Mark, type Priority, type Task } from "@/lib/store";
+import { KremlinBadge, isKremlinSource, kremlinCardClass, kremlinCardStyle, kremlinProjectClass } from "@/lib/kremlin-mark";
 
 const PRIORITIES: Priority[] = ["Срочно", "Высокий", "Средний", "Низкий"];
 const OPEN = "Все кроме выполнено";
@@ -102,7 +103,7 @@ export function TasksView() {
         <select className={inputClass + " w-auto"} value={project} onChange={(event) => setProject(event.target.value)}>
           <option value="Все">Все проекты</option>
           {boards.map((board) => (
-            <option key={board.id} value={board.id}>
+            <option key={board.id} value={board.id} className={kremlinProjectClass(board.name, boards)}>
               {board.name}
             </option>
           ))}
@@ -338,10 +339,13 @@ function TaskRow({
   const done = task.status === "Выполнено";
   const look = priorityLook(task.priority, done);
   const left = deadlineLeft(task.deadline, now);
+  const kremlin = isKremlinSource(task);
   return (
     <li
       data-id={task.id}
-      className={`flex items-center gap-3 rounded-card border border-l-4 px-3 py-3 ${look.rail} ${look.wash} ${live ? "border-gold ring-2 ring-gold" : dragging ? "border-gold opacity-60" : over ? "border-gold" : "border-line"}`}
+      data-source={kremlin ? "kremlin" : "local"}
+      style={kremlinCardStyle(task)}
+      className={`flex flex-wrap items-center gap-x-3 gap-y-2 rounded-card border border-l-4 px-3 py-3 ${kremlin ? kremlinCardClass(task) : `${look.rail} ${look.wash}`} ${live ? "border-gold ring-2 ring-gold" : dragging ? "border-gold opacity-60" : over ? "border-gold" : "border-line"}`}
     >
       <button
         type="button"
@@ -371,9 +375,10 @@ function TaskRow({
       >
         {done ? "✓" : ""}
       </button>
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0 flex-1 basis-[14rem]">
         <p className={`flex flex-wrap items-center gap-2 ${done ? "text-mist line-through" : ""}`}>
-          <span>{task.title}</span>
+          <span className="min-w-0">{task.title}</span>
+          {kremlin ? KremlinBadge() : null}
           {live ? <span className="rounded-full bg-gold px-2 py-0.5 text-[11px] font-semibold text-ink">Помидор</span> : null}
           <span className={`rounded-full px-2 py-0.5 text-[11px] leading-none font-semibold tracking-wide ${look.pill}`}>{task.priority}</span>
         </p>
@@ -393,9 +398,10 @@ function TaskRow({
           </p>
         ) : null}
       </div>
+      <div className="ml-auto flex flex-wrap items-center justify-end gap-x-3 gap-y-2">
       {left ? (
         <span
-          className={`shrink-0 text-right text-sm whitespace-nowrap tabular-nums ${left.overdue ? "text-ember" : done ? "text-mist" : "text-gold"}`}
+          className={`text-right text-sm whitespace-nowrap tabular-nums ${left.overdue ? "text-ember" : done ? "text-mist" : "text-gold"}`}
           title={left.overdue ? "Дедлайн прошёл" : "До конца дня дедлайна"}
         >
           {left.overdue ? `−${left.text}` : left.text}
@@ -415,6 +421,7 @@ function TaskRow({
       <button type="button" onClick={onDelete} className="text-sm text-ember">
         Удалить
       </button>
+      </div>
     </li>
   );
 }
