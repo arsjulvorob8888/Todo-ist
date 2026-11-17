@@ -93,7 +93,13 @@ describe("task source filter", () => {
     assert.ok(messageAt > 0 && sourceAt > messageAt);
     assert.match(shell, /app-scroll-pad/);
     assert.match(shell, /mobile-nav/);
-    assert.match(css, /padding-bottom:\s*calc\(4rem\s*\+\s*env\(safe-area-inset-bottom,\s*0px\)\)/);
+    assert.match(css, /--mobile-nav-height:\s*4\.5rem/);
+    assert.match(css, /--mobile-nav-clearance:\s*1rem/);
+    assert.match(
+      css,
+      /padding-bottom:\s*calc\(\s*var\(--mobile-nav-height\)\s*\+\s*var\(--mobile-nav-clearance\)\s*\+\s*env\(safe-area-inset-bottom,\s*0px\)\s*\)/,
+    );
+    assert.match(css, /\.mobile-nav\s*\{[^}]*min-height:\s*var\(--mobile-nav-height\)/);
     assert.match(css, /\.mobile-nav\s*\{[^}]*padding-bottom:\s*env\(safe-area-inset-bottom,\s*0px\)/);
   });
 });

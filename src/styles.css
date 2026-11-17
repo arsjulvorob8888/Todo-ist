@@ -35,12 +35,19 @@
     color: var(--color-cream);
   }
 
-  /* Mobile tab bar is 3.5rem. Keep page content above it and the home indicator. */
+  :root {
+    /* Measured phone bar is 71px; 4.5rem covers it. Clearance is extra room above the bar. */
+    --mobile-nav-height: 4.5rem;
+    --mobile-nav-clearance: 1rem;
+  }
+
   .app-scroll-pad {
-    padding-bottom: calc(4rem + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(var(--mobile-nav-height) + var(--mobile-nav-clearance) + env(safe-area-inset-bottom, 0px));
   }
 
   .mobile-nav {
+    box-sizing: border-box;
+    min-height: var(--mobile-nav-height);
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 
