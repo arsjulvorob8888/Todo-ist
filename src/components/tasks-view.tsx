@@ -8,6 +8,7 @@ import { addDays, dayKey } from "@/lib/dates";
 import { playStart, playTap } from "@/lib/sound";
 import { SIGN_IN_TASKS_MESSAGE, showSignInTasksPrompt, tasksForSession } from "@/lib/recovery";
 import { compareTasks, usePlanner, type Board, type Mark, type Priority, type Task } from "@/lib/store";
+import { INBOX_NAME, resolveTaskProject } from "@/lib/task-project";
 import {
   DEFAULT_TASK_FILTERS,
   OPEN_STATUS,
@@ -490,8 +491,10 @@ function TaskForm({
   onClose: () => void;
   onSave: (task: { title: string; project: string; projectId: string; labelIds: string[]; priority: Priority; deadline: string; description: string; category: string }) => void;
 }) {
+  const linkCategoryProject = usePlanner((s) => s.linkCategoryProject);
   const [title, setTitle] = useState(initial?.title ?? "");
   const [category, setCategory] = useState(initial?.category ?? "");
+  const [projectChoice, setProjectChoice] = useState(initial?.project || catProject[initial?.category ?? ""] || INBOX_NAME);
   const [priority, setPriority] = useState<Priority>(initial?.priority ?? "Средний");
   const [deadline, setDeadline] = useState(initial?.deadline ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
@@ -503,7 +506,17 @@ function TaskForm({
         <input className={inputClass} value={title} onChange={(event) => setTitle(event.target.value)} />
       </Field>
       <Field label="Категория">
-        <select className={inputClass} value={category} onChange={(event) => setCategory(event.target.value)}>
+        <select
+          className={inputClass}
+          value={category}
+          onChange={(event) => {
+            const name = event.target.value;
+            setCategory(name);
+            const mapped = catProject[name]?.trim();
+            if (mapped) setProjectChoice(mapped);
+            else if (!initial?.project) setProjectChoice(INBOX_NAME);
+          }}
+        >
           <option value="">Выбери категорию</option>
           {categories.map((name) => (
             <option key={name} value={name}>
@@ -512,6 +525,25 @@ function TaskForm({
           ))}
         </select>
       </Field>
+      <Field label="Проект">
+        <select
+          className={inputClass}
+          data-testid="task-project"
+          value={projectChoice}
+          onChange={(event) => setProjectChoice(event.target.value)}
+        >
+          {boards.map((board) => (
+            <option key={board.id} value={board.name}>
+              {board.name}
+            </option>
+          ))}
+        </select>
+      </Field>
+      {category && !catProject[category]?.trim() ? (
+        <p className="mb-3 text-sm text-mist" data-testid="task-project-hint">
+          {resolveTaskProject({ category, catProject, boards, chosen: projectChoice }).hint}
+        </p>
+      ) : null}
       <Field label="Метки">
         <div className="flex flex-wrap gap-2">
           {labels.map((label) => {
@@ -556,16 +588,12 @@ function TaskForm({
             setError("Нужны текст, категория и дедлайн");
             return;
           }
-          const projectName = catProject[category];
-          if (!projectName) {
-            setError("У этой категории ещё нет проекта. Назначь его в тайминге.");
-            return;
-          }
-          const home = boards.find((item) => item.name === projectName) || boards.find((item) => item.inbox);
+          const home = resolveTaskProject({ category, catProject, boards, chosen: projectChoice });
+          if (!catProject[category]?.trim()) linkCategoryProject(category, home.project);
           onSave({
             title: title.trim(),
-            project: home?.name || projectName,
-            projectId: home?.id || projectName,
+            project: home.project,
+            projectId: home.projectId,
             labelIds: picked,
             priority,
             deadline,

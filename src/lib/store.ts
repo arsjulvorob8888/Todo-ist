@@ -260,6 +260,7 @@ type State = {
   renameCategory: (kind: "project" | "time", from: string, to: string) => void;
   addCategory: (kind: "project" | "time", name: string, project?: string) => void;
   placeCategory: (name: string, project: string) => void;
+  linkCategoryProject: (name: string, project: string) => void;
   deleteCategory: (kind: "project" | "time", name: string) => void;
   setCategoryScore: (name: string, scored: boolean) => void;
   addRoutine: (category: string, start: string, end: string) => void;
@@ -553,6 +554,11 @@ export const usePlanner = create<State>()(
             task.category === name ? { ...task, project: home, projectId: board?.id ?? task.projectId } : task,
           ),
         });
+      },
+      linkCategoryProject: (name, project) => {
+        const home = project.trim();
+        if (!name || !home || (get().catProject ?? {})[name]) return;
+        set({ catProject: { ...(get().catProject ?? {}), [name]: home } });
       },
       deleteCategory: (kind, name) => {
         if (kind === "project") {
